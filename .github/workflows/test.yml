@@ -31,4 +31,4 @@ jobs:
           yarn lint
           yarn flow
           yarn build-e2e
-          yarn test-e2e
+          yarn test
