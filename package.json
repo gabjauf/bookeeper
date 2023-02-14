@@ -9,9 +9,13 @@
   },
   "dependencies": {
     "@tauri-apps/api": "^1.2.0",
+    "lodash": "^4.17.21",
+    "nanoid": "^4.0.1",
     "next": "^13.0.0",
+    "pdfjs-dist": "^3.3.122",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "tauri-plugin-sql-api": "github:tauri-apps/tauri-plugin-sql"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^1.2.2",
