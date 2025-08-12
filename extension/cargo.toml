@@ -1,0 +1,10 @@
+[package]
+name = "hamming_sqlite"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+rusqlite = { version = "0.31.0", features = ["loadable_extension", "functions"] }
