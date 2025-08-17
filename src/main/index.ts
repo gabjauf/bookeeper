@@ -6,6 +6,8 @@ import icon from '../../resources/icon.png?asset'
 import 'dotenv/config'
 import { drizzle } from 'drizzle-orm/libsql'
 
+import './IPC/upload-file';
+
 // You can specify any property from the libsql connection options
 const db = drizzle({ connection: { url: process.env.DB_FILE_NAME! } })
 
@@ -56,7 +58,7 @@ app.whenReady().then(() => {
   })
 
   // IPC test
-  ipcMain.on('ping', () => console.log('pong'))
+  ipcMain.on('ping', () => console.log('pong'))  
 
   createWindow()
 

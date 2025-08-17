@@ -169,3 +169,23 @@ code {
     display: none;
   }
 }
+
+/* Drag and drop area styling */
+.drop-area {
+  width: 300px;
+  height: 150px;
+  background-color: #f4f4f4;
+  border: 2px dashed #ccc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 2rem;
+  font-family: Arial, sans-serif;
+  transition: all 0.3s ease;
+}
+
+.drop-area.dragging {
+  background-color: #bce5ff; /* Light blue for dragging */
+  border: 2px dashed #007bff;
+  cursor: copy;
+}
