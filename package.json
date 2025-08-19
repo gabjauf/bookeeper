@@ -28,7 +28,7 @@
     "dotenv": "~17.2.1",
     "drizzle-orm": "~0.44.4",
     "electron-updater": "^6.3.9",
-        "mupdf": "~1.26.4",
+    "mupdf": "~1.26.4",
     "ollama": "~0.5.17"
   },
   "devDependencies": {

@@ -1,5 +1,6 @@
 import { sqliteTable, integer, customType, int, text } from 'drizzle-orm/sqlite-core'
 import { relations, sql } from 'drizzle-orm'
+import { randomUUID } from 'node:crypto'
 
 const embedding = customType<{
   data: number[]
@@ -19,27 +20,26 @@ const embedding = customType<{
 })
 
 export const usersTable = sqliteTable('users_table', {
-  id: int().primaryKey({ autoIncrement: true }),
+  id: text("id", { length: 36 }).primaryKey().$defaultFn(() => randomUUID()),
   name: text().notNull(),
   age: int().notNull(),
   email: text().notNull().unique()
 })
 
 export const vectorsTable = sqliteTable('vectors', {
-  id: integer('id').primaryKey(),
+  id: text("id", { length: 36 }).primaryKey().$defaultFn(() => randomUUID()),
   text: text().notNull(),
   embedding: embedding({ dimensions: 1024 }).notNull() // stores raw binary vector
 })
 
 export const documentsTable = sqliteTable('document', {
-  id: integer('id').primaryKey(),
+  id: text("id", { length: 36 }).primaryKey().$defaultFn(() => randomUUID()),
   title: text().notNull(),
 })
 
 export const chunksTable = sqliteTable('chunks', {
-  id: integer('id').primaryKey(),
-  title: text().notNull(),
-  documentId: integer('document_id')
+  id: text("id", { length: 36 }).primaryKey().$defaultFn(() => randomUUID()),
+  documentId: text('document_id')
     .notNull()
     .references(() => documentsTable.id),
   embedding: embedding({ dimensions: 1024 }).notNull() // stores raw binary vector
