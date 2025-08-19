@@ -172,11 +172,11 @@ code {
 
 /* Drag and drop area styling */
 .drop-area {
-  width: 300px;
-  height: 150px;
-  background-color: #f4f4f4;
-  border: 2px dashed #ccc;
-  display: flex;
+  width: 100vw;
+  height: 100vh;
+  padding: 4em;
+  /* background-color: #f4f4f4; */
+  /* display: flex; */
   align-items: center;
   justify-content: center;
   margin-bottom: 2rem;

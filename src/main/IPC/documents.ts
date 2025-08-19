@@ -6,6 +6,5 @@ import { documentsTable } from "../schema"
 registerIpc(IPCAction.DOCUMENT_GETALL, async (event, filters) => {
 
   const documents = await db.select().from(documentsTable);
-  console.log(documents)
   return documents;
 })
