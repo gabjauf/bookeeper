@@ -1,0 +1,1 @@
+ALTER TABLE `document` ADD `personal` integer DEFAULT false NOT NULL;

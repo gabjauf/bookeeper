@@ -16,6 +16,8 @@ export async function loadPDF(data: Buffer | ArrayBuffer | Uint8Array) {
   return new mupdf.PDFDocument(data)
 }
 
+export async function indexDocument()
+
 export async function drawPageAsSVG(
   document: PDFDocument,
   pageNumber: number
