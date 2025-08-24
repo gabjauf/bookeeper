@@ -1,8 +1,9 @@
 import type { Component } from 'solid-js'
 import { createResource, createSignal, For } from 'solid-js'
-import Versions from './components/Versions'
-import electronLogo from './assets/electron.svg'
+import { toaster } from "@kobalte/core";
 import { IPCAction } from '../../shared/ipc-actions'
+import { ToastList, ToastRegion, ToastTitle, ToastContent, ToastProgress, Toast } from '@renderer/components/ui/toast'
+import { Button } from './components/ui/button'
 
 const App: Component = () => {
   // Create ref for drop area using createSignal
@@ -72,8 +73,20 @@ const App: Component = () => {
       )
 
       // You can send these files to the backend via IPC if needed
-      await (window as any).electron.ipcRenderer.invoke(IPCAction.FILE_UPLOAD, data)
-      await refetchFiles()
+      try {
+        await (window as any).electron.ipcRenderer.invoke(IPCAction.FILE_UPLOAD, data)
+        await refetchFiles()
+      } catch (error) {
+        console.error(error);
+        toaster.show(props => (
+          <Toast toastId={props.toastId} variant="destructive">
+            <ToastContent>
+              <ToastTitle>{error instanceof Error ? error.message : 'Unknown error'}</ToastTitle>
+            </ToastContent>
+            <ToastProgress />
+          </Toast>
+        ))
+      }
     }
   }
 
@@ -84,18 +97,26 @@ const App: Component = () => {
   return (
     <div
       ref={setDropAreaRef}
-      class="drop-area grid grid-cols-4 gap-2"
+      class="drop-area"
       onDragOver={handleDragOver}
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
+      <div class="fixed bottom-0 right-0">
+      <ToastRegion>
+        <ToastList />
+      </ToastRegion>
+      </div>
+      <div class="grid grid-cols-4 gap-2">
       <For each={filesResource()} fallback={'No document'}>
         {(item, index) => <div data-index={index()} ondblclick={() => openOriginal(item.id)}><img src={`resource://${item.id}.svg`} alt={item.title} width={100} height={100} class="bg-white" /></div>}
       </For>
+      </div>
 
       {/* CSS for drop area styling */}
       <link rel="stylesheet" href="/src/assets/main.css" />
+      <Button>Click me</Button>
     </div>
   )
 }

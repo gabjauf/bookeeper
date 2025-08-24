@@ -1,7 +1,7 @@
 {
   "$schema": "https://shadcn-solid.com/schema.json",
-  "tailwind": {
-    "config": "tailwind.config.cjs",
+  "uno": {
+    "config": "uno.config.ts",
     "css": {
       "path": "src/renderer/src/assets/main.css",
       "variable": true
@@ -10,7 +10,7 @@
     "prefix": ""
   },
   "alias": {
-    "component": "@/components",
-    "cn": "@/libs/cn"
+    "component": "src/renderer/src/components",
+    "cn": "@renderer/libs/cn"
   }
 }
