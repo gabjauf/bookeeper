@@ -6,6 +6,8 @@ import { db } from '../db'
 import { documentsTable } from '../schema'
 import { PDFDocument } from 'mupdf'
 import { BOOK_PATH, THUMBNAIL_PATH } from '../consts/PATH'
+import crypto from 'crypto'
+import { eq } from 'drizzle-orm'
 
 async function ensureDir(dirPath) {
   await fs.mkdir(dirPath, { recursive: true })
@@ -18,10 +20,7 @@ export async function loadPDF(data: Buffer | ArrayBuffer | Uint8Array) {
 
 export async function indexDocument()
 
-export async function drawPageAsSVG(
-  document: PDFDocument,
-  pageNumber: number
-): Promise<string> {
+export async function drawPageAsSVG(document: PDFDocument, pageNumber: number): Promise<string> {
   const mupdf = await import('mupdf')
   const page = document.loadPage(pageNumber)
   const buffer = new mupdf.Buffer()
@@ -37,11 +36,19 @@ registerIpc(IPCAction.FILE_UPLOAD, async (event, fileData) => {
   await ensureDir(BOOK_PATH)
   await ensureDir(THUMBNAIL_PATH)
   const file = fileData[0]
-  const extension = file.name.split('.').pop();
-  const data = await db.insert(documentsTable).values({
-    title: file.name,
-    extension,
-  }).returning()
+  const extension = file.name.split('.').pop()
+  const hash = crypto.createHash('sha256').update(file.data).digest('hex')
+  if (await hasDuplicate(hash)) {
+    throw new Error('File already exists')
+  }
+  const data = await db
+    .insert(documentsTable)
+    .values({
+      title: file.name,
+      extension,
+      sha: hash
+    })
+    .returning()
   const filename = `${data[0].id}`
   if (file.name.endsWith('.pdf')) {
     const pdf = await loadPDF(file.data)
@@ -52,3 +59,8 @@ registerIpc(IPCAction.FILE_UPLOAD, async (event, fileData) => {
   await fs.writeFile(path.join(BOOK_PATH, `${filename}.${extension}`), file.data)
   return data
 })
+async function hasDuplicate(hash: string) {
+  const duplicates = await db.select().from(documentsTable).where(eq(documentsTable.sha, hash))
+  return duplicates.length > 0
+}
+

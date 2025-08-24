@@ -15,6 +15,13 @@
       "when": 1756046083697,
       "tag": "0001_salty_the_fury",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1756047297492,
+      "tag": "0002_brainy_greymalkin",
+      "breakpoints": true
     }
   ]
 }

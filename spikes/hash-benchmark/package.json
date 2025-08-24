@@ -1,0 +1,16 @@
+{
+  "name": "hash-benchmark",
+  "version": "1.0.0",
+  "main": "bench.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@noble/hashes": "~1.8.0",
+    "mitata": "~1.0.34",
+    "xxhash-wasm": "~1.1.0"
+  }
+}
