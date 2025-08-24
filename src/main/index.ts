@@ -1,5 +1,5 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
-import { join } from 'path'
+import { app, shell, BrowserWindow, ipcMain, protocol } from 'electron'
+import path, { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 
@@ -7,6 +7,8 @@ import 'dotenv/config'
 
 import './IPC/upload-file';
 import './IPC/documents';
+import { THUMBNAIL_PATH } from './consts/PATH'
+import { readFile } from 'fs/promises'
 
 function createWindow(): void {
   // Create the browser window.
@@ -40,12 +42,22 @@ function createWindow(): void {
   }
 }
 
+protocol.registerSchemesAsPrivileged([
+  { scheme: 'resource', privileges: { bypassCSP: true } }
+])
+
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
+
+  protocol.handle('resource', async (request) => {
+    const filePath = request.url.slice('resource://'.length)
+    const data = await readFile(path.join(THUMBNAIL_PATH, filePath))
+    return new Response(data, { headers: { 'Content-Type': 'image/svg+xml' } })
+  })
 
   // Default open or close DevTools by F12 in development
   // and ignore CommandOrControl + R in production.

@@ -1,4 +1,3 @@
-import { app } from 'electron'
 import fs from 'fs/promises'
 import { registerIpc } from '../IPC-wrapper'
 import { IPCAction } from '../../shared/ipc-actions'
@@ -6,13 +5,11 @@ import path from 'path'
 import { db } from '../db'
 import { documentsTable } from '../schema'
 import { PDFDocument } from 'mupdf'
+import { BOOK_PATH, THUMBNAIL_PATH } from '../consts/PATH'
 
 async function ensureDir(dirPath) {
   await fs.mkdir(dirPath, { recursive: true })
 }
-
-const BOOK_PATH = path.join(app.getPath('userData'), 'books')
-const THUMBNAIL_PATH = path.join(app.getPath('userData'), 'thumbnails')
 
 export async function loadPDF(data: Buffer | ArrayBuffer | Uint8Array) {
   const mupdf = await import('mupdf')

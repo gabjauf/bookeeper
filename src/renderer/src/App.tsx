@@ -40,7 +40,7 @@ const App: Component = () => {
     }
   }
 
-  const [filesResource, { refetch: refetchFiles }] = createResource<{ title: string }[]>(
+  const [filesResource, { refetch: refetchFiles }] = createResource<{ title: string, id: string }[]>(
     async () => {
       const data = await (window as any).electron.ipcRenderer.invoke(IPCAction.DOCUMENT_GETALL)
       return data
@@ -80,14 +80,14 @@ const App: Component = () => {
   return (
     <div
       ref={setDropAreaRef}
-      class="drop-area"
+      class="drop-area grid grid-cols-4 gap-2"
       onDragOver={handleDragOver}
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
       <For each={filesResource()} fallback={'No document'}>
-        {(item, index) => <div data-index={index()}>{item.title}</div>}
+        {(item, index) => <div data-index={index()}><img src={`resource://${item.id}.svg`} alt={item.title} width={100} height={100} class="bg-white" /></div>}
       </For>
 
       {/* CSS for drop area styling */}
