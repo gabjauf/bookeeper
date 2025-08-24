@@ -24,10 +24,12 @@
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
+    "@huggingface/transformers": "~3.7.2",
     "@libsql/client": "~0.15.10",
     "dotenv": "~17.2.1",
     "drizzle-orm": "~0.44.4",
     "electron-updater": "^6.3.9",
+    "langchain": "~0.3.31",
     "mupdf": "~1.26.4",
     "ollama": "~0.5.17"
   },

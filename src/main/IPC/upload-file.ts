@@ -37,7 +37,8 @@ registerIpc(IPCAction.FILE_UPLOAD, async (event, fileData) => {
   const file = fileData[0]
   const extension = file.name.split('.').pop();
   const data = await db.insert(documentsTable).values({
-    title: file.name
+    title: file.name,
+    extension,
   }).returning()
   const filename = `${data[0].id}`
   if (file.name.endsWith('.pdf')) {

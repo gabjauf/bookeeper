@@ -35,6 +35,7 @@ export const vectorsTable = sqliteTable('vectors', {
 export const documentsTable = sqliteTable('document', {
   id: text("id", { length: 36 }).primaryKey().$defaultFn(() => randomUUID()),
   title: text().notNull(),
+  extension: text().notNull()
 })
 
 export const chunksTable = sqliteTable('chunks', {

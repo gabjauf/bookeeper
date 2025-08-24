@@ -77,6 +77,10 @@ const App: Component = () => {
     }
   }
 
+  const openOriginal = (documentId: string) => {
+    (window as any).electron.ipcRenderer.invoke(IPCAction.DOCUMENT_OPEN_ORIGINAL, documentId)
+  }
+
   return (
     <div
       ref={setDropAreaRef}
@@ -87,7 +91,7 @@ const App: Component = () => {
       onDrop={handleDrop}
     >
       <For each={filesResource()} fallback={'No document'}>
-        {(item, index) => <div data-index={index()}><img src={`resource://${item.id}.svg`} alt={item.title} width={100} height={100} class="bg-white" /></div>}
+        {(item, index) => <div data-index={index()} ondblclick={() => openOriginal(item.id)}><img src={`resource://${item.id}.svg`} alt={item.title} width={100} height={100} class="bg-white" /></div>}
       </For>
 
       {/* CSS for drop area styling */}
