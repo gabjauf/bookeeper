@@ -22,6 +22,7 @@
     "build:extension": "cd ./extension && cargo build --release"
   },
   "dependencies": {
+    "@ark-ui/solid": "~5.23.0",
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
     "@huggingface/transformers": "~3.7.2",
@@ -42,8 +43,9 @@
   "devDependencies": {
     "@electron-toolkit/eslint-config-ts": "^3.0.0",
     "@electron-toolkit/tsconfig": "^1.0.1",
-    "@tailwindcss/vite": "~4.1.12",
+    "@tailwindcss/vite": "~4.1.13",
     "@types/node": "^22.16.5",
+    "daisyui": "~5.1.12",
     "drizzle-kit": "~0.31.4",
     "electron": "^37.2.3",
     "electron-builder": "^25.1.8",
@@ -52,7 +54,7 @@
     "eslint-plugin-solid": "^0.14.5",
     "prettier": "^3.6.2",
     "solid-js": "^1.9.7",
-    "tailwindcss": "~4.1.12",
+    "tailwindcss": "~4.1.13",
     "tsx": "~4.20.3",
     "typescript": "^5.8.3",
     "unocss": "~66.4.2",

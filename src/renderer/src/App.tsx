@@ -1,9 +1,17 @@
 import type { Component } from 'solid-js'
 import { createResource, createSignal, For } from 'solid-js'
-import { toaster } from "@kobalte/core";
+import { toaster } from '@kobalte/core'
 import { IPCAction } from '../../shared/ipc-actions'
-import { ToastList, ToastRegion, ToastTitle, ToastContent, ToastProgress, Toast } from '@renderer/components/ui/toast'
+import {
+  ToastList,
+  ToastRegion,
+  ToastTitle,
+  ToastContent,
+  ToastProgress,
+  Toast
+} from '@renderer/components/ui/toast'
 import { Button } from './components/ui/button'
+import { Menu } from '@ark-ui/solid/menu'
 
 const App: Component = () => {
   // Create ref for drop area using createSignal
@@ -41,12 +49,12 @@ const App: Component = () => {
     }
   }
 
-  const [filesResource, { refetch: refetchFiles }] = createResource<{ title: string, id: string }[]>(
-    async () => {
-      const data = await (window as any).electron.ipcRenderer.invoke(IPCAction.DOCUMENT_GETALL)
-      return data
-    }
-  )
+  const [filesResource, { refetch: refetchFiles }] = createResource<
+    { title: string; id: string }[]
+  >(async () => {
+    const data = await (window as any).electron.ipcRenderer.invoke(IPCAction.DOCUMENT_GETALL)
+    return data
+  })
 
   const handleDrop = async (event: DragEvent) => {
     event.preventDefault()
@@ -77,8 +85,8 @@ const App: Component = () => {
         await (window as any).electron.ipcRenderer.invoke(IPCAction.FILE_UPLOAD, data)
         await refetchFiles()
       } catch (error) {
-        console.error(error);
-        toaster.show(props => (
+        console.error(error)
+        toaster.show((props) => (
           <Toast toastId={props.toastId} variant="destructive">
             <ToastContent>
               <ToastTitle>{error instanceof Error ? error.message : 'Unknown error'}</ToastTitle>
@@ -91,7 +99,11 @@ const App: Component = () => {
   }
 
   const openOriginal = (documentId: string) => {
-    (window as any).electron.ipcRenderer.invoke(IPCAction.DOCUMENT_OPEN_ORIGINAL, documentId)
+    ;(window as any).electron.ipcRenderer.invoke(IPCAction.DOCUMENT_OPEN_ORIGINAL, documentId)
+  }
+
+  const deleteDocument = (documentId: string) => {
+    ;(window as any).electron.ipcRenderer.invoke(IPCAction.DOCUMENT_DELETE_BY_ID, documentId)
   }
 
   return (
@@ -104,19 +116,41 @@ const App: Component = () => {
       onDrop={handleDrop}
     >
       <div class="fixed bottom-0 right-0">
-      <ToastRegion>
-        <ToastList />
-      </ToastRegion>
+        <ToastRegion>
+          <ToastList />
+        </ToastRegion>
       </div>
       <div class="grid grid-cols-4 gap-2">
-      <For each={filesResource()} fallback={'No document'}>
-        {(item, index) => <div data-index={index()} ondblclick={() => openOriginal(item.id)}><img src={`resource://${item.id}.svg`} alt={item.title} width={100} height={100} class="bg-white" /></div>}
-      </For>
+        <For each={filesResource()} fallback={'No document'}>
+          {(item, index) => (
+            <div data-index={index()}>
+              <Menu.Root>
+                <Menu.ContextTrigger class="border-0 bg-inherit">
+                  <div ondblclick={() => openOriginal(item.id)}>
+                    <img
+                      src={`resource://${item.id}.svg`}
+                      alt={item.title}
+                      width={100}
+                      height={100}
+                      class="bg-white"
+                    />
+                  </div>
+                </Menu.ContextTrigger>
+                <Menu.Positioner>
+                  <Menu.Content class="menu dropdown-content base-100">
+                    <Menu.Item value="react">Open</Menu.Item>
+                    <Menu.Item value="solid"><button class="btn btn-error">Delete</button></Menu.Item>
+                  </Menu.Content>
+                </Menu.Positioner>
+              </Menu.Root>
+            </div>
+          )}
+        </For>
       </div>
 
       {/* CSS for drop area styling */}
       <link rel="stylesheet" href="/src/assets/main.css" />
-      <Button>Click me</Button>
+      <button class="btn btn-primary">Click me</button>
     </div>
   )
 }
