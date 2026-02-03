@@ -7,6 +7,7 @@ import 'dotenv/config'
 
 import './IPC/upload-file';
 import './IPC/documents';
+import './IPC/sync';
 import { THUMBNAIL_PATH } from './consts/PATH'
 import { readFile } from 'fs/promises'
 import { runMigrations } from './db'

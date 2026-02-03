@@ -6,6 +6,8 @@
   "author": "example.com",
   "homepage": "https://electron-vite.org",
   "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
     "format": "prettier --write .",
     "lint": "eslint --cache .",
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
@@ -36,6 +38,7 @@
     "langchain": "~0.3.31",
     "mupdf": "~1.26.4",
     "ollama": "~0.5.17",
+    "rclone.js": "~0.6.6",
     "tailwind-merge": "~3.3.1",
     "tailwindcss-animate": "~1.0.7",
     "unocss-preset-animations": "~1.2.1"
@@ -52,6 +55,7 @@
     "electron-vite": "^4.0.0",
     "eslint": "^9.31.0",
     "eslint-plugin-solid": "^0.14.5",
+    "memfs": "~4.56.10",
     "prettier": "^3.6.2",
     "solid-js": "^1.9.7",
     "tailwindcss": "~4.1.13",
@@ -59,7 +63,8 @@
     "typescript": "^5.8.3",
     "unocss": "~66.4.2",
     "vite": "^6.3.5",
-    "vite-plugin-solid": "^2.11.7"
+    "vite-plugin-solid": "^2.11.7",
+    "vitest": "~4.0.18"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

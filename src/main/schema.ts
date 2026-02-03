@@ -37,7 +37,20 @@ export const documentsTable = sqliteTable('document', {
   title: text().notNull(),
   extension: text().notNull(),
   personal: integer({ mode: 'boolean' }).notNull().default(false),
-  sha: text()
+  sha: text(),
+  // Sync metadata (nullable for existing rows, set in app code)
+  createdAt: text('created_at'),
+  updatedAt: text('updated_at'),
+  deviceId: text('device_id'),
+  syncVersion: integer('sync_version'),
+})
+
+export const syncStateTable = sqliteTable('sync_state', {
+  id: text("id", { length: 36 }).primaryKey().$defaultFn(() => randomUUID()),
+  lastSync: text('last_sync'),
+  deviceId: text('device_id').notNull(),
+  remotePath: text('remote_path').notNull().default('bookeeper'),
+  syncVersion: integer('sync_version').default(0),
 })
 
 export const chunksTable = sqliteTable('chunks', {
