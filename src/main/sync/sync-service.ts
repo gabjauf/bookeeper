@@ -1,11 +1,11 @@
 import { app } from 'electron'
 import path from 'path'
-import { randomUUID } from 'crypto'
-import { bisync, isRcloneAvailable, isRemoteConfigured } from './rclone-wrapper'
+import { bisync, isRcloneAvailable } from './rclone-wrapper'
 import {
   SyncConfig,
   loadSyncConfig,
   saveSyncConfig,
+  createDefaultConfig,
   updateLastSync,
   DEFAULT_REMOTE_PATH,
 } from './sync-config'
@@ -43,13 +43,7 @@ export class SyncService {
     }
 
     const config = await loadSyncConfig()
-    if (!config) {
-      return SyncStatus.NOT_CONFIGURED
-    }
-
-    // Check if the configured remote actually exists
-    const remoteExists = await isRemoteConfigured(config.remoteName)
-    if (!remoteExists) {
+    if (!config || config.enabledRemotes.length === 0) {
       return SyncStatus.NOT_CONFIGURED
     }
 
@@ -57,39 +51,47 @@ export class SyncService {
   }
 
   /**
-   * Set the remote to use for syncing
-   * The remote must already be configured in rclone
+   * Enable a remote for syncing
    */
-  async setRemote(remoteName: string, remotePath = DEFAULT_REMOTE_PATH): Promise<void> {
-    const remoteExists = await isRemoteConfigured(remoteName)
-    if (!remoteExists) {
-      throw new Error(`Remote "${remoteName}" is not configured in rclone`)
+  async enableRemote(remoteName: string): Promise<void> {
+    const config = (await loadSyncConfig()) || createDefaultConfig()
+    // Ensure enabledRemotes is an array
+    if (!Array.isArray(config.enabledRemotes)) {
+      config.enabledRemotes = []
     }
-
-    // Load existing config or create new one
-    const existingConfig = await loadSyncConfig()
-    const config: SyncConfig = {
-      remoteName,
-      remotePath,
-      deviceId: existingConfig?.deviceId || randomUUID(),
-      syncOnClose: existingConfig?.syncOnClose ?? true,
-      lastSyncTimestamp: existingConfig?.lastSyncTimestamp ?? null,
+    if (!config.enabledRemotes.includes(remoteName)) {
+      config.enabledRemotes.push(remoteName)
+      await saveSyncConfig(config)
+      this.config = config
     }
-
-    await saveSyncConfig(config)
-    this.config = config
   }
 
   /**
-   * Get the currently configured remote name
+   * Disable a remote from syncing
    */
-  async getConfiguredRemote(): Promise<string | null> {
+  async disableRemote(remoteName: string): Promise<void> {
     const config = await loadSyncConfig()
-    return config?.remoteName ?? null
+    if (config) {
+      // Ensure enabledRemotes is an array
+      if (!Array.isArray(config.enabledRemotes)) {
+        config.enabledRemotes = []
+      }
+      config.enabledRemotes = config.enabledRemotes.filter((r) => r !== remoteName)
+      await saveSyncConfig(config)
+      this.config = config
+    }
   }
 
   /**
-   * Sync entire library (books, thumbnails, and database)
+   * Get the list of enabled remotes for syncing
+   */
+  async getEnabledRemotes(): Promise<string[]> {
+    const config = await loadSyncConfig()
+    return config?.enabledRemotes || []
+  }
+
+  /**
+   * Sync entire library (books, thumbnails, and database) to all enabled remotes
    */
   async syncLibrary(): Promise<SyncResult> {
     // Load config if not already loaded
@@ -97,8 +99,8 @@ export class SyncService {
       this.config = await loadSyncConfig()
     }
 
-    if (!this.config) {
-      throw new Error('Sync not configured')
+    if (!this.config || this.config.enabledRemotes.length === 0) {
+      throw new Error('No remotes enabled for sync')
     }
 
     if (this.syncing) {
@@ -115,17 +117,21 @@ export class SyncService {
     }
 
     try {
-      const { remoteName, remotePath } = this.config
+      const { enabledRemotes, remotePath } = this.config
       const userData = app.getPath('userData')
       const booksPath = path.join(userData, 'books')
       const thumbnailsPath = path.join(userData, 'thumbnails')
 
-      // Sync books using the configured remote
-      await bisync(booksPath, `${remoteName}:${remotePath}/books`)
-      result.booksSync = true
+      // Sync to ALL enabled remotes
+      for (const remoteName of enabledRemotes) {
+        // Sync books
+        await bisync(booksPath, `${remoteName}:${remotePath}/books`)
 
-      // Sync thumbnails
-      await bisync(thumbnailsPath, `${remoteName}:${remotePath}/thumbnails`)
+        // Sync thumbnails
+        await bisync(thumbnailsPath, `${remoteName}:${remotePath}/thumbnails`)
+      }
+
+      result.booksSync = true
       result.thumbnailsSync = true
 
       // TODO: Implement database sync via JSON export/merge

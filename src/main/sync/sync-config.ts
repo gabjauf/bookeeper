@@ -5,11 +5,10 @@ import { randomUUID } from 'crypto'
 
 const CONFIG_PATH = path.join(app.getPath('userData'), 'sync-config.json')
 
-export const DEFAULT_REMOTE_NAME = 'pcloud'
 export const DEFAULT_REMOTE_PATH = 'bookeeper'
 
 export interface SyncConfig {
-  remoteName: string // The rclone remote name (e.g., 'pcloud', 'gdrive')
+  enabledRemotes: string[] // List of rclone remote names enabled for sync
   remotePath: string // The folder on the remote (e.g., 'bookeeper')
   deviceId: string
   syncOnClose: boolean
@@ -18,11 +17,27 @@ export interface SyncConfig {
 
 /**
  * Load sync configuration from disk
+ * Handles migration from old format (remoteName) to new format (enabledRemotes)
  */
 export async function loadSyncConfig(): Promise<SyncConfig | null> {
   try {
     const data = await readFile(CONFIG_PATH, 'utf-8')
-    return JSON.parse(data)
+    const parsed = JSON.parse(data)
+
+    // Migrate from old format if needed
+    if (parsed.remoteName && !parsed.enabledRemotes) {
+      parsed.enabledRemotes = [parsed.remoteName]
+      delete parsed.remoteName
+      // Save migrated config
+      await saveSyncConfig(parsed)
+    }
+
+    // Ensure enabledRemotes is always an array
+    if (!Array.isArray(parsed.enabledRemotes)) {
+      parsed.enabledRemotes = []
+    }
+
+    return parsed
   } catch {
     return null
   }
@@ -40,9 +55,9 @@ export async function saveSyncConfig(config: SyncConfig): Promise<void> {
 /**
  * Create default sync config with a new device ID
  */
-export function createDefaultConfig(remoteName: string = DEFAULT_REMOTE_NAME): SyncConfig {
+export function createDefaultConfig(): SyncConfig {
   return {
-    remoteName,
+    enabledRemotes: [],
     remotePath: DEFAULT_REMOTE_PATH,
     deviceId: randomUUID(),
     syncOnClose: true,

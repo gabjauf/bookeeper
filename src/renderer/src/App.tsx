@@ -10,9 +10,8 @@ import {
   ToastProgress,
   Toast
 } from '@renderer/components/ui/toast'
-import { Button } from './components/ui/button'
 import { Menu } from '@ark-ui/solid/menu'
-import { SyncSettings } from './components/SyncSettings'
+import { Sidebar } from './components/Sidebar'
 
 const App: Component = () => {
   // Create ref for drop area using createSignal
@@ -108,53 +107,62 @@ const App: Component = () => {
   }
 
   return (
-    <div
-      ref={setDropAreaRef}
-      class="drop-area"
-      onDragOver={handleDragOver}
-      onDragEnter={handleDragEnter}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-    >
-      <div class="fixed bottom-0 right-0">
-        <ToastRegion>
-          <ToastList />
-        </ToastRegion>
-      </div>
-      <div class="fixed top-4 right-4 z-50">
-        <SyncSettings />
-      </div>
-      <div class="grid grid-cols-4 gap-2">
-        <For each={filesResource()} fallback={'No document'}>
-          {(item, index) => (
-            <div data-index={index()}>
-              <Menu.Root>
-                <Menu.ContextTrigger class="border-0 bg-inherit">
-                  <div ondblclick={() => openOriginal(item.id)}>
-                    <img
-                      src={`resource://${item.id}.svg`}
-                      alt={item.title}
-                      width={100}
-                      height={100}
-                      class="bg-white"
-                    />
-                  </div>
-                </Menu.ContextTrigger>
-                <Menu.Positioner>
-                  <Menu.Content class="menu dropdown-content base-100">
-                    <Menu.Item value="react">Open</Menu.Item>
-                    <Menu.Item value="solid"><button class="btn btn-error">Delete</button></Menu.Item>
-                  </Menu.Content>
-                </Menu.Positioner>
-              </Menu.Root>
-            </div>
-          )}
-        </For>
-      </div>
+    <div class="flex min-h-screen">
+      {/* Sidebar */}
+      <Sidebar />
 
-      {/* CSS for drop area styling */}
-      <link rel="stylesheet" href="/src/assets/main.css" />
-      <button class="btn btn-primary">Click me</button>
+      {/* Main content */}
+      <div
+        ref={setDropAreaRef}
+        class="drop-area flex-1 ml-12 p-4"
+        onDragOver={handleDragOver}
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        <div class="fixed bottom-0 right-0">
+          <ToastRegion>
+            <ToastList />
+          </ToastRegion>
+        </div>
+
+        <div class="grid grid-cols-4 gap-4">
+          <For each={filesResource()} fallback={<p class="text-neutral-500 col-span-4">Drop documents here to add them</p>}>
+            {(item, index) => (
+              <div data-index={index()}>
+                <Menu.Root>
+                  <Menu.ContextTrigger class="border-0 bg-inherit">
+                    <div ondblclick={() => openOriginal(item.id)} class="cursor-pointer">
+                      <img
+                        src={`resource://${item.id}.svg`}
+                        alt={item.title}
+                        width={100}
+                        height={100}
+                        class="bg-white rounded shadow"
+                      />
+                      <p class="text-sm mt-1 text-neutral-300 truncate max-w-[100px]">{item.title}</p>
+                    </div>
+                  </Menu.ContextTrigger>
+                  <Menu.Positioner>
+                    <Menu.Content class="bg-neutral-800 border border-neutral-700 rounded shadow-lg p-1">
+                      <Menu.Item value="open" class="px-3 py-1 hover:bg-neutral-700 rounded cursor-pointer text-sm">
+                        Open
+                      </Menu.Item>
+                      <Menu.Item
+                        value="delete"
+                        class="px-3 py-1 hover:bg-red-900 rounded cursor-pointer text-sm text-red-400"
+                        onClick={() => deleteDocument(item.id)}
+                      >
+                        Delete
+                      </Menu.Item>
+                    </Menu.Content>
+                  </Menu.Positioner>
+                </Menu.Root>
+              </div>
+            )}
+          </For>
+        </div>
+      </div>
     </div>
   )
 }
