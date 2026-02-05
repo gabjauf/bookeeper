@@ -1,14 +1,32 @@
 import { registerIpc } from '../IPC-wrapper'
 import { IPCAction } from '../../shared/ipc-actions'
-import { SyncService } from '../sync/sync-service'
-
-const syncService = new SyncService()
+import { syncService } from '../sync/sync-service'
+import { listConfiguredRemotes } from '../sync/rclone-wrapper'
+import { startPCloudAuth } from '../sync/oauth-pcloud'
 
 /**
- * Configure sync with pCloud
+ * List all configured rclone remotes
  */
-registerIpc(IPCAction.SYNC_CONFIGURE, async (_event, pcloudToken: string, remotePath?: string) => {
-  await syncService.configure(pcloudToken, remotePath)
+registerIpc(IPCAction.SYNC_LIST_REMOTES, async () => {
+  return listConfiguredRemotes()
+})
+
+/**
+ * Set the remote to use for syncing
+ */
+registerIpc(IPCAction.SYNC_SET_REMOTE, async (_event, remoteName: string) => {
+  await syncService.setRemote(remoteName)
+  return { success: true }
+})
+
+/**
+ * Start pCloud OAuth flow using rclone's built-in credentials.
+ * Blocks until the user completes authorization in the browser,
+ * then configures the sync remote.
+ */
+registerIpc(IPCAction.SYNC_AUTH_PCLOUD, async () => {
+  await startPCloudAuth()
+  await syncService.setRemote('pcloud')
   return { success: true }
 })
 
@@ -30,6 +48,5 @@ registerIpc(IPCAction.SYNC_STATUS, async () => {
  * Get last sync time
  */
 registerIpc(IPCAction.SYNC_GET_LAST_TIME, async () => {
-  const lastSync = await syncService.getLastSyncTime()
-  return lastSync?.toISOString() ?? null
+  return syncService.getLastSyncTimeISO()
 })

@@ -5,11 +5,12 @@ import { randomUUID } from 'crypto'
 
 const CONFIG_PATH = path.join(app.getPath('userData'), 'sync-config.json')
 
+export const DEFAULT_REMOTE_NAME = 'pcloud'
 export const DEFAULT_REMOTE_PATH = 'bookeeper'
 
 export interface SyncConfig {
-  pcloudToken: string
-  remotePath: string
+  remoteName: string // The rclone remote name (e.g., 'pcloud', 'gdrive')
+  remotePath: string // The folder on the remote (e.g., 'bookeeper')
   deviceId: string
   syncOnClose: boolean
   lastSyncTimestamp: number | null
@@ -39,9 +40,9 @@ export async function saveSyncConfig(config: SyncConfig): Promise<void> {
 /**
  * Create default sync config with a new device ID
  */
-export function createDefaultConfig(pcloudToken: string): SyncConfig {
+export function createDefaultConfig(remoteName: string = DEFAULT_REMOTE_NAME): SyncConfig {
   return {
-    pcloudToken,
+    remoteName,
     remotePath: DEFAULT_REMOTE_PATH,
     deviceId: randomUUID(),
     syncOnClose: true,

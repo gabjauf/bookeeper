@@ -1,14 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-// Use vi.hoisted to ensure mockPromises is available before vi.mock is hoisted
-const { mockPromises } = vi.hoisted(() => ({
-  mockPromises: vi.fn(),
+const { mockRpc, mockRpcAsync } = vi.hoisted(() => ({
+  mockRpc: vi.fn(),
+  mockRpcAsync: vi.fn(),
 }))
 
-vi.mock('rclone.js', () => ({
-  default: {
-    promises: mockPromises,
-  },
+vi.mock('../rclone-bridge', () => ({
+  rpc: mockRpc,
+  rpcAsync: mockRpcAsync,
+  initialize: vi.fn(),
+  finalize: vi.fn(),
 }))
 
 import {
@@ -17,6 +18,8 @@ import {
   syncUp,
   syncDown,
   isRcloneAvailable,
+  listConfiguredRemotes,
+  isRemoteConfigured,
 } from '../rclone-wrapper'
 
 describe('rclone-wrapper', () => {
@@ -25,23 +28,25 @@ describe('rclone-wrapper', () => {
   })
 
   describe('isRcloneAvailable', () => {
-    describe('given rclone is installed', () => {
+    describe('given librclone responds to core/version', () => {
       it('when checking availability, then returns true', async () => {
-        mockPromises.mockResolvedValueOnce({
-          exitCode: 0,
-          stdout: 'rclone v1.68.0',
+        mockRpc.mockReturnValue({
+          output: { version: 'v1.69.2' },
+          status: 200,
         })
 
         const result = await isRcloneAvailable()
 
         expect(result).toBe(true)
-        expect(mockPromises).toHaveBeenCalledWith('version')
+        expect(mockRpc).toHaveBeenCalledWith('core/version', {})
       })
     })
 
-    describe('given rclone is not installed', () => {
+    describe('given librclone throws', () => {
       it('when checking availability, then returns false', async () => {
-        mockPromises.mockRejectedValueOnce(new Error('ENOENT'))
+        mockRpc.mockImplementation(() => {
+          throw new Error('Library not loaded')
+        })
 
         const result = await isRcloneAvailable()
 
@@ -51,99 +56,166 @@ describe('rclone-wrapper', () => {
   })
 
   describe('configurePcloud', () => {
-    describe('given valid pCloud token', () => {
-      it('when configuring, then creates pcloud remote with correct params', async () => {
-        mockPromises.mockResolvedValueOnce({ exitCode: 0 })
+    describe('given token JSON and successful config', () => {
+      it('when configuring, then calls config/create with token', async () => {
+        mockRpc.mockReturnValue({ output: {}, status: 200 })
+        const tokenJson = '{"access_token":"abc123","token_type":"bearer"}'
 
-        await configurePcloud('test-access-token')
+        await configurePcloud(tokenJson)
 
-        expect(mockPromises).toHaveBeenCalledWith(
-          'config',
-          'create',
-          'pcloud',
-          'pcloud',
-          expect.objectContaining({
-            token: expect.stringContaining('test-access-token'),
-            hostname: 'eapi.pcloud.com',
-          })
-        )
+        expect(mockRpc).toHaveBeenCalledWith('config/create', {
+          name: 'pcloud',
+          type: 'pcloud',
+          parameters: { token: tokenJson },
+        })
       })
     })
 
-    describe('given custom hostname', () => {
-      it('when configuring, then uses custom hostname', async () => {
-        mockPromises.mockResolvedValueOnce({ exitCode: 0 })
+    describe('given config/create fails', () => {
+      it('when configuring, then throws error', async () => {
+        mockRpc.mockReturnValue({
+          output: { error: 'invalid token' },
+          status: 400,
+        })
 
-        await configurePcloud('test-token', 'api.pcloud.com')
-
-        expect(mockPromises).toHaveBeenCalledWith(
-          'config',
-          'create',
-          'pcloud',
-          'pcloud',
-          expect.objectContaining({
-            hostname: 'api.pcloud.com',
-          })
+        await expect(configurePcloud('bad-token')).rejects.toThrow(
+          'Failed to configure pCloud'
         )
       })
     })
   })
 
-  describe('bisync', () => {
-    describe('given source and destination paths', () => {
-      it('when calling bisync, then executes with correct flags', async () => {
-        mockPromises.mockResolvedValueOnce({
-          exitCode: 0,
-          stdout: 'Bisync completed',
+  describe('listConfiguredRemotes', () => {
+    describe('given remotes are configured', () => {
+      it('when listing, then returns remote names', async () => {
+        mockRpc.mockReturnValue({
+          output: { remotes: ['pcloud', 'gdrive'] },
+          status: 200,
         })
 
-        const result = await bisync('/local/path', 'pcloud:remote/path')
+        const result = await listConfiguredRemotes()
 
-        expect(mockPromises).toHaveBeenCalledWith(
-          'bisync',
-          '/local/path',
-          'pcloud:remote/path',
-          expect.objectContaining({
-            '--conflict-resolve': 'newer',
-            '--conflict-loser': 'pathname',
-          })
-        )
-        expect(result).toEqual({
-          exitCode: 0,
-          stdout: 'Bisync completed',
+        expect(result).toEqual(['pcloud', 'gdrive'])
+        expect(mockRpc).toHaveBeenCalledWith('config/listremotes', {})
+      })
+    })
+
+    describe('given no remotes configured', () => {
+      it('when listing, then returns empty array', async () => {
+        mockRpc.mockReturnValue({
+          output: { remotes: [] },
+          status: 200,
         })
+
+        const result = await listConfiguredRemotes()
+
+        expect(result).toEqual([])
+      })
+    })
+
+    describe('given RPC fails', () => {
+      it('when listing, then returns empty array', async () => {
+        mockRpc.mockReturnValue({ output: {}, status: 500 })
+
+        const result = await listConfiguredRemotes()
+
+        expect(result).toEqual([])
+      })
+    })
+  })
+
+  describe('isRemoteConfigured', () => {
+    describe('given remote exists', () => {
+      it('when checking, then returns true', async () => {
+        mockRpc.mockReturnValue({
+          output: { remotes: ['pcloud'] },
+          status: 200,
+        })
+
+        const result = await isRemoteConfigured('pcloud')
+
+        expect(result).toBe(true)
+      })
+    })
+
+    describe('given remote does not exist', () => {
+      it('when checking, then returns false', async () => {
+        mockRpc.mockReturnValue({
+          output: { remotes: ['gdrive'] },
+          status: 200,
+        })
+
+        const result = await isRemoteConfigured('pcloud')
+
+        expect(result).toBe(false)
       })
     })
   })
 
   describe('syncUp', () => {
     describe('given local and remote paths', () => {
-      it('when syncing up, then syncs from local to pcloud remote', async () => {
-        mockPromises.mockResolvedValueOnce({ exitCode: 0 })
+      it('when syncing up, then calls sync/copy RPC', async () => {
+        mockRpcAsync.mockResolvedValue({ output: {}, status: 200 })
 
         await syncUp('/local/books', 'bookeeper/books')
 
-        expect(mockPromises).toHaveBeenCalledWith(
-          'sync',
-          '/local/books',
-          'pcloud:bookeeper/books'
-        )
+        expect(mockRpcAsync).toHaveBeenCalledWith('sync/copy', {
+          srcFs: '/local/books',
+          dstFs: 'pcloud:bookeeper/books',
+        })
+      })
+    })
+
+    describe('given sync fails', () => {
+      it('when syncing up, then throws error', async () => {
+        mockRpcAsync.mockResolvedValue({
+          output: { error: 'connection refused' },
+          status: 500,
+        })
+
+        await expect(syncUp('/local', 'remote')).rejects.toThrow('Sync failed')
       })
     })
   })
 
   describe('syncDown', () => {
     describe('given remote and local paths', () => {
-      it('when syncing down, then syncs from pcloud remote to local', async () => {
-        mockPromises.mockResolvedValueOnce({ exitCode: 0 })
+      it('when syncing down, then calls sync/copy RPC', async () => {
+        mockRpcAsync.mockResolvedValue({ output: {}, status: 200 })
 
         await syncDown('bookeeper/books', '/local/books')
 
-        expect(mockPromises).toHaveBeenCalledWith(
-          'sync',
-          'pcloud:bookeeper/books',
-          '/local/books'
-        )
+        expect(mockRpcAsync).toHaveBeenCalledWith('sync/copy', {
+          srcFs: 'pcloud:bookeeper/books',
+          dstFs: '/local/books',
+        })
+      })
+    })
+  })
+
+  describe('bisync', () => {
+    describe('given source and destination paths', () => {
+      it('when calling bisync, then calls sync/bisync RPC', async () => {
+        mockRpcAsync.mockResolvedValue({ output: {}, status: 200 })
+
+        await bisync('/local/path', 'pcloud:remote/path')
+
+        expect(mockRpcAsync).toHaveBeenCalledWith('sync/bisync', {
+          path1: '/local/path',
+          path2: 'pcloud:remote/path',
+          resolvPolicy: 'newer',
+        })
+      })
+    })
+
+    describe('given bisync fails', () => {
+      it('when calling bisync, then throws error', async () => {
+        mockRpcAsync.mockResolvedValue({
+          output: { error: 'conflict' },
+          status: 500,
+        })
+
+        await expect(bisync('/a', '/b')).rejects.toThrow('Bisync failed')
       })
     })
   })

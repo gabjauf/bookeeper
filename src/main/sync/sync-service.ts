@@ -1,7 +1,7 @@
 import { app } from 'electron'
 import path from 'path'
 import { randomUUID } from 'crypto'
-import { bisync, configurePcloud, isRcloneAvailable } from './rclone-wrapper'
+import { bisync, isRcloneAvailable, isRemoteConfigured } from './rclone-wrapper'
 import {
   SyncConfig,
   loadSyncConfig,
@@ -47,27 +47,45 @@ export class SyncService {
       return SyncStatus.NOT_CONFIGURED
     }
 
+    // Check if the configured remote actually exists
+    const remoteExists = await isRemoteConfigured(config.remoteName)
+    if (!remoteExists) {
+      return SyncStatus.NOT_CONFIGURED
+    }
+
     return SyncStatus.IDLE
   }
 
   /**
-   * Configure sync with pCloud token
+   * Set the remote to use for syncing
+   * The remote must already be configured in rclone
    */
-  async configure(pcloudToken: string, remotePath = DEFAULT_REMOTE_PATH): Promise<void> {
-    // Configure pCloud in rclone
-    await configurePcloud(pcloudToken)
+  async setRemote(remoteName: string, remotePath = DEFAULT_REMOTE_PATH): Promise<void> {
+    const remoteExists = await isRemoteConfigured(remoteName)
+    if (!remoteExists) {
+      throw new Error(`Remote "${remoteName}" is not configured in rclone`)
+    }
 
-    // Create and save config
+    // Load existing config or create new one
+    const existingConfig = await loadSyncConfig()
     const config: SyncConfig = {
-      pcloudToken,
+      remoteName,
       remotePath,
-      deviceId: randomUUID(),
-      syncOnClose: true,
-      lastSyncTimestamp: null,
+      deviceId: existingConfig?.deviceId || randomUUID(),
+      syncOnClose: existingConfig?.syncOnClose ?? true,
+      lastSyncTimestamp: existingConfig?.lastSyncTimestamp ?? null,
     }
 
     await saveSyncConfig(config)
     this.config = config
+  }
+
+  /**
+   * Get the currently configured remote name
+   */
+  async getConfiguredRemote(): Promise<string | null> {
+    const config = await loadSyncConfig()
+    return config?.remoteName ?? null
   }
 
   /**
@@ -97,16 +115,17 @@ export class SyncService {
     }
 
     try {
+      const { remoteName, remotePath } = this.config
       const userData = app.getPath('userData')
       const booksPath = path.join(userData, 'books')
       const thumbnailsPath = path.join(userData, 'thumbnails')
 
-      // Sync books
-      await bisync(booksPath, `pcloud:${this.config.remotePath}/books`)
+      // Sync books using the configured remote
+      await bisync(booksPath, `${remoteName}:${remotePath}/books`)
       result.booksSync = true
 
       // Sync thumbnails
-      await bisync(thumbnailsPath, `pcloud:${this.config.remotePath}/thumbnails`)
+      await bisync(thumbnailsPath, `${remoteName}:${remotePath}/thumbnails`)
       result.thumbnailsSync = true
 
       // TODO: Implement database sync via JSON export/merge
@@ -136,4 +155,15 @@ export class SyncService {
     }
     return new Date(config.lastSyncTimestamp)
   }
+
+  /**
+   * Get last sync time as ISO string (for IPC)
+   */
+  async getLastSyncTimeISO(): Promise<string | null> {
+    const date = await this.getLastSyncTime()
+    return date?.toISOString() ?? null
+  }
 }
+
+// Singleton instance
+export const syncService = new SyncService()

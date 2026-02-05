@@ -11,6 +11,7 @@ import './IPC/sync';
 import { THUMBNAIL_PATH } from './consts/PATH'
 import { readFile } from 'fs/promises'
 import { runMigrations } from './db'
+import { initialize as initRclone, finalize as finalizeRclone } from './sync/rclone-bridge'
 
 function createWindow(): void {
   // Create the browser window.
@@ -53,6 +54,7 @@ protocol.registerSchemesAsPrivileged([
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(async () => {
   await runMigrations()
+  initRclone()
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
 
@@ -87,5 +89,21 @@ app.on('window-all-closed', () => {
   }
 })
 
-// In this file you can include the rest of your app's specific main process
-// code. You can also put them in separate files and require them here.
+// Cleanup rclone on quit
+app.on('will-quit', () => {
+  finalizeRclone()
+})
+
+// Single instance lock - focus existing window if second instance launched
+const gotTheLock = app.requestSingleInstanceLock()
+if (!gotTheLock) {
+  app.quit()
+} else {
+  app.on('second-instance', () => {
+    const mainWindow = BrowserWindow.getAllWindows()[0]
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore()
+      mainWindow.focus()
+    }
+  })
+}

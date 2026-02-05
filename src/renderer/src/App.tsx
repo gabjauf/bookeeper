@@ -12,6 +12,7 @@ import {
 } from '@renderer/components/ui/toast'
 import { Button } from './components/ui/button'
 import { Menu } from '@ark-ui/solid/menu'
+import { SyncSettings } from './components/SyncSettings'
 
 const App: Component = () => {
   // Create ref for drop area using createSignal
@@ -119,6 +120,9 @@ const App: Component = () => {
         <ToastRegion>
           <ToastList />
         </ToastRegion>
+      </div>
+      <div class="fixed top-4 right-4 z-50">
+        <SyncSettings />
       </div>
       <div class="grid grid-cols-4 gap-2">
         <For each={filesResource()} fallback={'No document'}>

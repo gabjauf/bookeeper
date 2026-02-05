@@ -1,4 +1,4 @@
-import rclone from 'rclone.js'
+import { rpc, rpcAsync } from './rclone-bridge'
 
 export interface RcloneResult {
   exitCode: number
@@ -7,12 +7,12 @@ export interface RcloneResult {
 }
 
 /**
- * Check if rclone is available
+ * Check if rclone (librclone) is available
  */
 export async function isRcloneAvailable(): Promise<boolean> {
   try {
-    await rclone.promises('version')
-    return true
+    const result = rpc('core/version', {})
+    return result.status === 200
   } catch {
     return false
   }
@@ -20,35 +20,34 @@ export async function isRcloneAvailable(): Promise<boolean> {
 
 /**
  * Configure pCloud remote in rclone
- * @param token - pCloud OAuth access token
- * @param hostname - pCloud API hostname (default: eapi.pcloud.com for EU)
+ * @param tokenJson - Full token JSON string from OAuth
  */
-export async function configurePcloud(
-  token: string,
-  hostname = 'eapi.pcloud.com'
-): Promise<void> {
-  await rclone.promises('config', 'create', 'pcloud', 'pcloud', {
-    token: JSON.stringify({
-      access_token: token,
-      token_type: 'bearer',
-      expiry: '0001-01-01T00:00:00Z',
-    }),
-    hostname,
+export async function configurePcloud(tokenJson: string): Promise<void> {
+  const result = rpc('config/create', {
+    name: 'pcloud',
+    type: 'pcloud',
+    parameters: { token: tokenJson },
   })
+  if (result.status !== 200) {
+    throw new Error(`Failed to configure pCloud: ${JSON.stringify(result.output)}`)
+  }
 }
 
 /**
- * Bidirectional sync between local path and pCloud remote
- * Uses last-write-wins conflict resolution
+ * List all configured remotes in rclone
  */
-export async function bisync(
-  source: string,
-  dest: string
-): Promise<RcloneResult> {
-  return rclone.promises('bisync', source, dest, {
-    '--conflict-resolve': 'newer',
-    '--conflict-loser': 'pathname',
-  })
+export async function listConfiguredRemotes(): Promise<string[]> {
+  const result = rpc('config/listremotes', {})
+  if (result.status !== 200) return []
+  return (result.output as { remotes?: string[] }).remotes || []
+}
+
+/**
+ * Check if a specific remote is configured
+ */
+export async function isRemoteConfigured(remoteName: string): Promise<boolean> {
+  const remotes = await listConfiguredRemotes()
+  return remotes.includes(remoteName)
 }
 
 /**
@@ -57,8 +56,14 @@ export async function bisync(
 export async function syncUp(
   localPath: string,
   remotePath: string
-): Promise<RcloneResult> {
-  return rclone.promises('sync', localPath, `pcloud:${remotePath}`)
+): Promise<void> {
+  const result = await rpcAsync('sync/copy', {
+    srcFs: localPath,
+    dstFs: `pcloud:${remotePath}`,
+  })
+  if (result.status !== 200) {
+    throw new Error(`Sync failed: ${JSON.stringify(result.output)}`)
+  }
 }
 
 /**
@@ -67,6 +72,42 @@ export async function syncUp(
 export async function syncDown(
   remotePath: string,
   localPath: string
-): Promise<RcloneResult> {
-  return rclone.promises('sync', `pcloud:${remotePath}`, localPath)
+): Promise<void> {
+  const result = await rpcAsync('sync/copy', {
+    srcFs: `pcloud:${remotePath}`,
+    dstFs: localPath,
+  })
+  if (result.status !== 200) {
+    throw new Error(`Sync failed: ${JSON.stringify(result.output)}`)
+  }
+}
+
+/**
+ * Bidirectional sync between local path and remote
+ */
+export async function bisync(
+  source: string,
+  dest: string
+): Promise<void> {
+  const result = await rpcAsync('sync/bisync', {
+    path1: source,
+    path2: dest,
+    resolvPolicy: 'newer',
+  })
+  if (result.status !== 200) {
+    throw new Error(`Bisync failed: ${JSON.stringify(result.output)}`)
+  }
+}
+
+/**
+ * Get the type of a configured remote (e.g., 'pcloud', 'drive', 'dropbox')
+ */
+export async function getRemoteType(remoteName: string): Promise<string | null> {
+  try {
+    const result = rpc('config/get', { name: remoteName })
+    if (result.status !== 200) return null
+    return (result.output as { type?: string }).type || null
+  } catch {
+    return null
+  }
 }

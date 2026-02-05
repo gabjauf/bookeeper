@@ -10,6 +10,7 @@ vi.mock('electron', () => ({
 // Mock rclone-wrapper
 vi.mock('../rclone-wrapper', () => ({
   isRcloneAvailable: vi.fn(),
+  isRemoteConfigured: vi.fn(),
   configurePcloud: vi.fn(),
   bisync: vi.fn(),
   syncUp: vi.fn(),
@@ -22,6 +23,7 @@ vi.mock('../sync-config', () => ({
   saveSyncConfig: vi.fn(),
   updateLastSync: vi.fn(),
   DEFAULT_REMOTE_PATH: 'bookeeper',
+  DEFAULT_REMOTE_NAME: 'pcloud',
 }))
 
 import { SyncService, SyncStatus } from '../sync-service'
@@ -58,16 +60,35 @@ describe('SyncService', () => {
       })
     })
 
-    describe('given rclone and config are available', () => {
-      it('when getting status, then returns idle', async () => {
+    describe('given rclone and config are available but remote not configured', () => {
+      it('when getting status, then returns not-configured', async () => {
         vi.mocked(rcloneWrapper.isRcloneAvailable).mockResolvedValue(true)
         vi.mocked(syncConfig.loadSyncConfig).mockResolvedValue({
-          pcloudToken: 'token',
+          remoteName: 'pcloud',
           remotePath: 'bookeeper',
           deviceId: 'device-1',
           syncOnClose: true,
           lastSyncTimestamp: null,
         })
+        vi.mocked(rcloneWrapper.isRemoteConfigured).mockResolvedValue(false)
+
+        const status = await service.getStatus()
+
+        expect(status).toBe(SyncStatus.NOT_CONFIGURED)
+      })
+    })
+
+    describe('given rclone, config, and remote are all available', () => {
+      it('when getting status, then returns idle', async () => {
+        vi.mocked(rcloneWrapper.isRcloneAvailable).mockResolvedValue(true)
+        vi.mocked(syncConfig.loadSyncConfig).mockResolvedValue({
+          remoteName: 'pcloud',
+          remotePath: 'bookeeper',
+          deviceId: 'device-1',
+          syncOnClose: true,
+          lastSyncTimestamp: null,
+        })
+        vi.mocked(rcloneWrapper.isRemoteConfigured).mockResolvedValue(true)
 
         const status = await service.getStatus()
 
@@ -76,18 +97,28 @@ describe('SyncService', () => {
     })
   })
 
-  describe('configure', () => {
-    describe('given valid pCloud token', () => {
-      it('when configuring, then sets up pcloud remote and saves config', async () => {
-        vi.mocked(rcloneWrapper.configurePcloud).mockResolvedValue(undefined)
+  describe('setRemote', () => {
+    describe('given remote is not configured in rclone', () => {
+      it('when setting remote, then throws error', async () => {
+        vi.mocked(rcloneWrapper.isRemoteConfigured).mockResolvedValue(false)
+
+        await expect(service.setRemote('pcloud')).rejects.toThrow(
+          'Remote "pcloud" is not configured in rclone'
+        )
+      })
+    })
+
+    describe('given remote is configured in rclone', () => {
+      it('when setting remote, then saves config with remote name', async () => {
+        vi.mocked(rcloneWrapper.isRemoteConfigured).mockResolvedValue(true)
+        vi.mocked(syncConfig.loadSyncConfig).mockResolvedValue(null)
         vi.mocked(syncConfig.saveSyncConfig).mockResolvedValue(undefined)
 
-        await service.configure('test-token')
+        await service.setRemote('pcloud')
 
-        expect(rcloneWrapper.configurePcloud).toHaveBeenCalledWith('test-token')
         expect(syncConfig.saveSyncConfig).toHaveBeenCalledWith(
           expect.objectContaining({
-            pcloudToken: 'test-token',
+            remoteName: 'pcloud',
             remotePath: 'bookeeper',
           })
         )
@@ -107,13 +138,13 @@ describe('SyncService', () => {
     describe('given sync is configured', () => {
       beforeEach(() => {
         vi.mocked(syncConfig.loadSyncConfig).mockResolvedValue({
-          pcloudToken: 'token',
+          remoteName: 'pcloud',
           remotePath: 'bookeeper',
           deviceId: 'device-1',
           syncOnClose: true,
           lastSyncTimestamp: null,
         })
-        vi.mocked(rcloneWrapper.bisync).mockResolvedValue({ exitCode: 0 })
+        vi.mocked(rcloneWrapper.bisync).mockResolvedValue(undefined)
         vi.mocked(syncConfig.updateLastSync).mockImplementation(async (config) => ({
           ...config,
           lastSyncTimestamp: Date.now(),
@@ -148,7 +179,7 @@ describe('SyncService', () => {
     describe('given sync is already in progress', () => {
       it('when trying to sync again, then throws error', async () => {
         vi.mocked(syncConfig.loadSyncConfig).mockResolvedValue({
-          pcloudToken: 'token',
+          remoteName: 'pcloud',
           remotePath: 'bookeeper',
           deviceId: 'device-1',
           syncOnClose: true,
