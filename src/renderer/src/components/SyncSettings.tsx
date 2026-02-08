@@ -2,9 +2,18 @@ import { createSignal, createResource, Show, Match, Switch } from 'solid-js'
 import { Button } from './ui/button'
 import { IPCAction } from '../../../shared/ipc-actions'
 
+interface AuthCheckResult {
+  valid: boolean
+  needsReauth: boolean
+  error?: string
+}
+
 export function SyncSettings() {
   const [syncing, setSyncing] = createSignal(false)
   const [error, setError] = createSignal<string | null>(null)
+  const [needsReauth, setNeedsReauth] = createSignal(false)
+  const [failedRemote, setFailedRemote] = createSignal<string | null>(null)
+  const [reauthenticating, setReauthenticating] = createSignal(false)
 
   const [status, { refetch: refetchStatus }] = createResource(async () => {
     return (window as any).electron.ipcRenderer.invoke(IPCAction.SYNC_STATUS) as Promise<string>
@@ -16,31 +25,76 @@ export function SyncSettings() {
     >
   })
 
-  const [remotes] = createResource(async () => {
+  const [remotes, { refetch: refetchRemotes }] = createResource(async () => {
     return (window as any).electron.ipcRenderer.invoke(IPCAction.SYNC_LIST_REMOTES) as Promise<
       string[]
     >
   })
 
+  // Proactive auth check - runs when remotes are loaded
+  const [authStatus, { refetch: refetchAuth }] = createResource(
+    () => remotes()?.[0],
+    async (remoteName): Promise<AuthCheckResult | null> => {
+      if (!remoteName) return null
+      return (window as any).electron.ipcRenderer.invoke(
+        IPCAction.SYNC_CHECK_AUTH,
+        remoteName
+      ) as Promise<AuthCheckResult>
+    }
+  )
+
+  // Show re-auth button if either proactive check or reactive check indicates it
+  const showReauth = () => needsReauth() || authStatus()?.needsReauth === true
+
   const refetchAll = () => {
     refetchStatus()
     refetchLastSync()
+    refetchRemotes()
+    refetchAuth()
+    setNeedsReauth(false)
+    setFailedRemote(null)
   }
 
   const handleSync = async () => {
     setSyncing(true)
     setError(null)
+    setNeedsReauth(false)
+    setFailedRemote(null)
     try {
       const result = await (window as any).electron.ipcRenderer.invoke(IPCAction.SYNC_START)
       if (!result.success) {
         setError(result.error || 'Sync failed')
+        if (result.needsReauth) {
+          setNeedsReauth(true)
+          setFailedRemote(result.failedRemote || null)
+        }
       }
       refetchLastSync()
       refetchStatus()
     } catch (e) {
+      console.error('Sync failed:', e)
       setError(e instanceof Error ? e.message : 'Unknown error')
     } finally {
       setSyncing(false)
+    }
+  }
+
+  const handleReauth = async () => {
+    const remote = failedRemote() || remotes()?.[0]
+    if (!remote) return
+
+    setReauthenticating(true)
+    setError(null)
+    try {
+      await (window as any).electron.ipcRenderer.invoke(IPCAction.SYNC_REAUTH_REMOTE, remote)
+      setNeedsReauth(false)
+      setFailedRemote(null)
+      refetchAll()
+    } catch (e) {
+      console.error('Re-authentication failed:', e)
+      setError(e instanceof Error ? e.message : 'Re-authentication failed')
+    } finally {
+      setReauthenticating(false)
     }
   }
 
@@ -101,8 +155,30 @@ export function SyncSettings() {
               <p class="text-sm text-red-500">{error()}</p>
             </Show>
 
+            {/* Re-auth prompt */}
+            <Show when={showReauth()}>
+              <div class="p-2 bg-yellow-900/20 rounded border border-yellow-600">
+                <p class="text-sm text-yellow-400 mb-2">Authentication expired</p>
+                <Button
+                  onClick={handleReauth}
+                  disabled={reauthenticating()}
+                  variant="outline"
+                  class="w-full"
+                >
+                  {reauthenticating()
+                    ? 'Authenticating...'
+                    : `Re-authenticate ${failedRemote() || remotes()?.[0] || ''}`}
+                </Button>
+              </div>
+            </Show>
+
             {/* Sync button */}
-            <Button onClick={handleSync} disabled={syncing()} class="w-full" variant="secondary">
+            <Button
+              onClick={handleSync}
+              disabled={syncing() || showReauth()}
+              class="w-full"
+              variant="secondary"
+            >
               {syncing() ? 'Syncing...' : 'Sync Now'}
             </Button>
           </div>

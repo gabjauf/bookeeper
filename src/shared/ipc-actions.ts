@@ -15,6 +15,8 @@ export const IPCAction = {
     SYNC_ENABLE_REMOTE: 'sync:enableRemote',
     SYNC_DISABLE_REMOTE: 'sync:disableRemote',
     SYNC_GET_ENABLED_REMOTES: 'sync:getEnabledRemotes',
+    SYNC_CHECK_AUTH: 'sync:checkAuth',
+    SYNC_REAUTH_REMOTE: 'sync:reauthRemote',
 } as const;
 
 export type IPCAction = keyof typeof IPCAction;

@@ -5,6 +5,8 @@ import {
   listConfiguredRemotes,
   listProviders,
   addRemote,
+  checkRemoteAuth,
+  reauthRemote,
 } from '../sync/rclone-wrapper'
 import { startPCloudAuth } from '../sync/oauth-pcloud'
 
@@ -87,4 +89,20 @@ registerIpc(IPCAction.SYNC_STATUS, async () => {
  */
 registerIpc(IPCAction.SYNC_GET_LAST_TIME, async () => {
   return syncService.getLastSyncTimeISO()
+})
+
+/**
+ * Check if a remote's authentication is still valid
+ */
+registerIpc(IPCAction.SYNC_CHECK_AUTH, async (_event, remoteName: string) => {
+  return checkRemoteAuth(remoteName)
+})
+
+/**
+ * Re-authenticate an existing remote (triggers OAuth flow)
+ * Preserves remote settings, just refreshes the token
+ */
+registerIpc(IPCAction.SYNC_REAUTH_REMOTE, async (_event, remoteName: string) => {
+  await reauthRemote(remoteName)
+  return { success: true }
 })

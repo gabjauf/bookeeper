@@ -7,6 +7,35 @@ export interface RcloneResult {
 }
 
 /**
+ * Error thrown when authentication fails (token expired/revoked)
+ */
+export class AuthError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'AuthError'
+  }
+}
+
+export interface AuthCheckResult {
+  valid: boolean
+  needsReauth: boolean
+  error?: string
+}
+
+/**
+ * Check if an error string indicates an auth problem
+ */
+function isAuthError(errorStr: string): boolean {
+  const lower = errorStr.toLowerCase()
+  return (
+    lower.includes('access_token') ||
+    lower.includes('re-authorize') ||
+    lower.includes('token expired') ||
+    (lower.includes('token') && lower.includes('revoked'))
+  )
+}
+
+/**
  * Check if rclone (librclone) is available
  */
 export async function isRcloneAvailable(): Promise<boolean> {
@@ -83,18 +112,52 @@ export async function syncDown(
 }
 
 /**
- * Bidirectional sync between local path and remote
+ * Ensure a remote directory exists, creating it if needed
+ */
+async function ensureRemoteDir(remotePath: string): Promise<void> {
+  await rpcAsync('operations/mkdir', {
+    fs: remotePath,
+    remote: '',
+  })
+  // Ignore errors - directory may already exist
+}
+
+/**
+ * Bidirectional sync between local path and remote.
+ * Automatically runs with resync if first attempt fails (e.g., no prior listings).
  */
 export async function bisync(
   source: string,
   dest: string
 ): Promise<void> {
-  const result = await rpcAsync('sync/bisync', {
+  // Ensure remote directory exists before bisync
+  await ensureRemoteDir(dest)
+
+  // First attempt without resync
+  let result = await rpcAsync('sync/bisync', {
     path1: source,
     path2: dest,
-    resolvPolicy: 'newer',
+    resync: false,
   })
+
+  // If failed, retry with resync (establishes new baseline)
   if (result.status !== 200) {
+    result = await rpcAsync('sync/bisync', {
+      path1: source,
+      path2: dest,
+      resync: true,
+    })
+  }
+
+  if (result.status !== 200) {
+    // RPC output doesn't contain detailed auth errors - do a quick auth check
+    const remoteName = dest.split(':')[0]
+    const authCheck = await checkRemoteAuth(remoteName)
+
+    if (authCheck.needsReauth) {
+      throw new AuthError('Token expired, re-authentication required')
+    }
+
     throw new Error(`Bisync failed: ${JSON.stringify(result.output)}`)
   }
 }
@@ -179,5 +242,47 @@ export function deleteRemote(name: string): void {
   const result = rpc('config/delete', { name })
   if (result.status !== 200) {
     throw new Error(`Failed to delete remote: ${JSON.stringify(result.output)}`)
+  }
+}
+
+/**
+ * Check if a remote's authentication is still valid
+ * Uses operations/about as a lightweight auth check
+ */
+export async function checkRemoteAuth(remoteName: string): Promise<AuthCheckResult> {
+  try {
+    const result = await rpcAsync('operations/about', {
+      fs: `${remoteName}:`,
+    })
+
+    if (result.status === 200) {
+      return { valid: true, needsReauth: false }
+    }
+
+    const errorStr = JSON.stringify(result.output)
+    return {
+      valid: false,
+      needsReauth: isAuthError(errorStr),
+      error: errorStr,
+    }
+  } catch (e) {
+    console.error('Auth check failed:', e)
+    return { valid: false, needsReauth: false, error: String(e) }
+  }
+}
+
+/**
+ * Re-authenticate an existing remote (triggers OAuth flow)
+ * Uses config/update instead of delete+create to preserve remote settings
+ */
+export async function reauthRemote(name: string): Promise<void> {
+  const result = await rpcAsync('config/update', {
+    name,
+    parameters: {},
+    // Not passing config_refresh_token=false means it WILL trigger OAuth
+  })
+
+  if (result.status !== 200) {
+    throw new Error(`Re-auth failed: ${JSON.stringify(result.output)}`)
   }
 }

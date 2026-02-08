@@ -203,7 +203,7 @@ describe('rclone-wrapper', () => {
         expect(mockRpcAsync).toHaveBeenCalledWith('sync/bisync', {
           path1: '/local/path',
           path2: 'pcloud:remote/path',
-          resolvPolicy: 'newer',
+          resync: false,
         })
       })
     })

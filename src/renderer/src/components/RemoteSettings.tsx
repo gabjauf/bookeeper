@@ -8,6 +8,12 @@ interface CloudProvider {
   prefix: string
 }
 
+interface AuthCheckResult {
+  valid: boolean
+  needsReauth: boolean
+  error?: string
+}
+
 // Provider display names
 const PROVIDER_NAMES: Record<string, string> = {
   pcloud: 'pCloud',
@@ -42,6 +48,9 @@ export function RemoteSettings() {
   const [adding, setAdding] = createSignal(false)
   const [syncing, setSyncing] = createSignal(false)
   const [error, setError] = createSignal<string | null>(null)
+  const [needsReauth, setNeedsReauth] = createSignal(false)
+  const [failedRemote, setFailedRemote] = createSignal<string | null>(null)
+  const [reauthenticating, setReauthenticating] = createSignal(false)
 
   // Fetch configured rclone remotes
   const [remotes, { refetch: refetchRemotes }] = createResource(async () => {
@@ -77,6 +86,21 @@ export function RemoteSettings() {
       IPCAction.SYNC_GET_LAST_TIME
     ) as Promise<string | null>
   })
+
+  // Proactive auth check - runs when remotes are loaded
+  const [authStatus, { refetch: refetchAuth }] = createResource(
+    () => (enabledRemotes() || [])[0],
+    async (remoteName): Promise<AuthCheckResult | null> => {
+      if (!remoteName) return null
+      return (window as any).electron.ipcRenderer.invoke(
+        IPCAction.SYNC_CHECK_AUTH,
+        remoteName
+      ) as Promise<AuthCheckResult>
+    }
+  )
+
+  // Show re-auth button if either proactive check or reactive check indicates it
+  const showReauth = () => needsReauth() || authStatus()?.needsReauth === true
 
   const handleAddRemote = async (providerType: string) => {
     setAdding(true)
@@ -134,19 +158,51 @@ export function RemoteSettings() {
   const handleSync = async () => {
     setSyncing(true)
     setError(null)
+    setNeedsReauth(false)
+    setFailedRemote(null)
     try {
       const result = await (window as any).electron.ipcRenderer.invoke(
         IPCAction.SYNC_START
       )
       if (!result.success) {
         setError(result.error || 'Sync failed')
+        if (result.needsReauth) {
+          setNeedsReauth(true)
+          setFailedRemote(result.failedRemote || null)
+        }
       }
       refetchLastSync()
       refetchStatus()
     } catch (e) {
+      console.error('Sync failed:', e)
       setError(e instanceof Error ? e.message : 'Unknown error')
     } finally {
       setSyncing(false)
+    }
+  }
+
+  const handleReauth = async () => {
+    const remote = failedRemote() || (enabledRemotes() || [])[0]
+    if (!remote) return
+
+    setReauthenticating(true)
+    setError(null)
+    try {
+      await (window as any).electron.ipcRenderer.invoke(
+        IPCAction.SYNC_REAUTH_REMOTE,
+        remote
+      )
+      setNeedsReauth(false)
+      setFailedRemote(null)
+      refetchRemotes()
+      refetchEnabledRemotes()
+      refetchAuth()
+      refetchStatus()
+    } catch (e) {
+      console.error('Re-authentication failed:', e)
+      setError(e instanceof Error ? e.message : 'Re-authentication failed')
+    } finally {
+      setReauthenticating(false)
     }
   }
 
@@ -248,14 +304,32 @@ export function RemoteSettings() {
 
       {/* Sync controls */}
       <Show when={isConfigured()}>
-        <div class="border-t border-neutral-700 pt-4">
-          <div class="flex items-center justify-between mb-2">
+        <div class="border-t border-neutral-700 pt-4 space-y-3">
+          <div class="flex items-center justify-between">
             <span class="text-sm text-neutral-400">Last sync:</span>
             <span class="text-sm">{formatLastSync(lastSync() ?? null)}</span>
           </div>
+
+          {/* Re-auth prompt */}
+          <Show when={showReauth()}>
+            <div class="p-2 bg-yellow-900/20 rounded border border-yellow-600">
+              <p class="text-sm text-yellow-400 mb-2">Authentication expired</p>
+              <Button
+                onClick={handleReauth}
+                disabled={reauthenticating()}
+                variant="outline"
+                class="w-full"
+              >
+                {reauthenticating()
+                  ? 'Authenticating...'
+                  : `Re-authenticate ${failedRemote() || (enabledRemotes() || [])[0] || ''}`}
+              </Button>
+            </div>
+          </Show>
+
           <Button
             onClick={handleSync}
-            disabled={syncing()}
+            disabled={syncing() || showReauth()}
             class="w-full"
             variant="secondary"
           >

@@ -1,6 +1,6 @@
 import { app } from 'electron'
 import path from 'path'
-import { bisync, isRcloneAvailable } from './rclone-wrapper'
+import { bisync, isRcloneAvailable, AuthError } from './rclone-wrapper'
 import {
   SyncConfig,
   loadSyncConfig,
@@ -20,6 +20,8 @@ export enum SyncStatus {
 export interface SyncResult {
   success: boolean
   error?: string
+  needsReauth?: boolean
+  failedRemote?: string
   booksSync: boolean
   thumbnailsSync: boolean
   dbSync: boolean
@@ -116,6 +118,8 @@ export class SyncService {
       dbSync: false,
     }
 
+    let currentRemote: string | undefined
+
     try {
       const { enabledRemotes, remotePath } = this.config
       const userData = app.getPath('userData')
@@ -124,6 +128,8 @@ export class SyncService {
 
       // Sync to ALL enabled remotes
       for (const remoteName of enabledRemotes) {
+        currentRemote = remoteName
+
         // Sync books
         await bisync(booksPath, `${remoteName}:${remotePath}/books`)
 
@@ -143,6 +149,11 @@ export class SyncService {
 
       result.success = true
     } catch (error) {
+      console.error('Sync failed:', error)
+      if (error instanceof AuthError) {
+        result.needsReauth = true
+        result.failedRemote = currentRemote
+      }
       result.error = error instanceof Error ? error.message : 'Unknown error'
     } finally {
       this.syncing = false
