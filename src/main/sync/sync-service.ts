@@ -1,5 +1,6 @@
 import { app } from 'electron'
 import path from 'path'
+import { mkdir } from 'fs/promises'
 import { bisync, isRcloneAvailable, AuthError } from './rclone-wrapper'
 import {
   SyncConfig,
@@ -9,6 +10,7 @@ import {
   updateLastSync,
   DEFAULT_REMOTE_PATH,
 } from './sync-config'
+import { exportDatabase, importDatabase } from './db-sync'
 
 export enum SyncStatus {
   IDLE = 'idle',
@@ -140,8 +142,23 @@ export class SyncService {
       result.booksSync = true
       result.thumbnailsSync = true
 
-      // TODO: Implement database sync via JSON export/merge
-      // For now, mark as successful
+      // Database sync via JSON export/merge
+      const dbExportDir = path.join(userData, 'db-export')
+      await mkdir(dbExportDir, { recursive: true })
+
+      // Export local DB before sync
+      await exportDatabase(dbExportDir)
+
+      // Sync the export directory to all enabled remotes
+      for (const remoteName of enabledRemotes) {
+        currentRemote = remoteName
+        await bisync(dbExportDir, `${remoteName}:${remotePath}/db`)
+      }
+
+      // Import merged data from remote
+      const importPath = path.join(dbExportDir, 'documents.json')
+      await importDatabase(importPath)
+
       result.dbSync = true
 
       // Update last sync timestamp

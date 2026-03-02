@@ -1,3 +1,4 @@
+import './env-setup'
 import { app, shell, BrowserWindow, ipcMain, protocol } from 'electron'
 import path, { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'

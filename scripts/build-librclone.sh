@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-RCLONE_VERSION="v1.69.2"
+RCLONE_VERSION="v1.73.0"
 RCLONE_SRC="/tmp/rclone-src"
 OUTPUT_DIR="$(cd "$(dirname "$0")/.." && pwd)/native"
 
@@ -23,6 +23,16 @@ if [ ! -d "$RCLONE_SRC" ]; then
 fi
 
 cd "$RCLONE_SRC"
+
+# Patch librclone.go to include bisync RC command
+# The default librclone doesn't import cmd/bisync which registers sync/bisync
+if ! grep -q 'cmd/bisync' librclone/librclone.go; then
+  echo "Patching librclone.go to include bisync..."
+  # Use temporary file for cross-platform compatibility
+  sed 's|_ "github.com/rclone/rclone/fs/sync"       // import sync/\*|_ "github.com/rclone/rclone/fs/sync"       // import sync/*\
+	_ "github.com/rclone/rclone/cmd/bisync"    // import bisync|' librclone/librclone.go > librclone/librclone.go.tmp
+  mv librclone/librclone.go.tmp librclone/librclone.go
+fi
 
 case "$(uname -s)" in
   Darwin)

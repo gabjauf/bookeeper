@@ -1,9 +1,20 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { rm } from 'fs/promises'
+import { join } from 'path'
+
+const { testUserData } = vi.hoisted(() => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { join } = require('path')
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { tmpdir } = require('os')
+  return { testUserData: join(tmpdir(), 'bookshelf-sync-test') as string }
+})
 
 // Mock electron app
 vi.mock('electron', () => ({
   app: {
-    getPath: vi.fn().mockReturnValue('/mock/userData'),
+    getPath: vi.fn().mockReturnValue(testUserData),
+    isPackaged: false,
   },
 }))
 
@@ -21,6 +32,12 @@ vi.mock('../rclone-wrapper', () => ({
       this.name = 'AuthError'
     }
   },
+}))
+
+// Mock db-sync (prevents real SQLite connection at module load time)
+vi.mock('../db-sync', () => ({
+  exportDatabase: vi.fn(),
+  importDatabase: vi.fn(),
 }))
 
 // Mock sync-config
@@ -44,6 +61,10 @@ import * as syncConfig from '../sync-config'
 
 describe('SyncService', () => {
   let service: SyncService
+
+  afterEach(async () => {
+    try { await rm(testUserData, { recursive: true }) } catch { /* ignore */ }
+  })
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -257,8 +278,8 @@ describe('SyncService', () => {
 
         await service.syncLibrary()
 
-        // Should sync books and thumbnails to both remotes (4 calls total)
-        expect(rcloneWrapper.bisync).toHaveBeenCalledTimes(4)
+        // Should sync books, thumbnails, and db-export to both remotes (6 calls total)
+        expect(rcloneWrapper.bisync).toHaveBeenCalledTimes(6)
         expect(rcloneWrapper.bisync).toHaveBeenCalledWith(
           expect.stringContaining('books'),
           'pcloud:bookeeper/books'

@@ -41,12 +41,15 @@ registerIpc(IPCAction.FILE_UPLOAD, async (event, fileData) => {
   if (await hasDuplicate(hash)) {
     throw new Error('File already exists')
   }
+  const now = new Date().toISOString()
   const data = await db
     .insert(documentsTable)
     .values({
       title: file.name,
       extension,
-      sha: hash
+      sha: hash,
+      createdAt: now,
+      updatedAt: now,
     })
     .returning()
   const filename = `${data[0].id}`
