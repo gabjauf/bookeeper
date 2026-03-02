@@ -41,7 +41,7 @@ const lib = koffi.load(getLibPath())
 const _initialize = lib.func('void RcloneInitialize()')
 const _finalize = lib.func('void RcloneFinalize()')
 const _rpc = lib.func('RcloneRPCResult RcloneRPC(char* method, char* input)')
-const _freeString = lib.func('void RcloneFreeString(char* str)')
+lib.func('void RcloneFreeString(char* str)') // bound for completeness; unused until string freeing is required
 
 let initialized = false
 

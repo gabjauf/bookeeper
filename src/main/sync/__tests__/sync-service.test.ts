@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { rm } from 'fs/promises'
-import { join } from 'path'
 
 const { testUserData } = vi.hoisted(() => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports

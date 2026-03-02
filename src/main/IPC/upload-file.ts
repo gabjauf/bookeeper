@@ -18,8 +18,6 @@ export async function loadPDF(data: Buffer | ArrayBuffer | Uint8Array) {
   return new mupdf.PDFDocument(data)
 }
 
-export async function indexDocument()
-
 export async function drawPageAsSVG(document: PDFDocument, pageNumber: number): Promise<string> {
   const mupdf = await import('mupdf')
   const page = document.loadPage(pageNumber)
@@ -32,7 +30,7 @@ export async function drawPageAsSVG(document: PDFDocument, pageNumber: number): 
   return buffer.asString()
 }
 
-registerIpc(IPCAction.FILE_UPLOAD, async (event, fileData) => {
+registerIpc(IPCAction.FILE_UPLOAD, async (_event, fileData) => {
   await ensureDir(BOOK_PATH)
   await ensureDir(THUMBNAIL_PATH)
   const file = fileData[0]

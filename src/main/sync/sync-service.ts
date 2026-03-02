@@ -8,7 +8,6 @@ import {
   saveSyncConfig,
   createDefaultConfig,
   updateLastSync,
-  DEFAULT_REMOTE_PATH,
 } from './sync-config'
 import { exportDatabase, importDatabase } from './db-sync'
 
