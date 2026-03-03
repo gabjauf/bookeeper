@@ -9,4 +9,5 @@ out
 *.db
 
 data/
-**/target/**
+**/target/**resources/models/
+extension/target

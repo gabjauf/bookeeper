@@ -13,7 +13,7 @@ const copyMigrationsPlugin = () => ({
 
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin(), copyMigrationsPlugin()]
+    plugins: [externalizeDepsPlugin(), copyMigrationsPlugin()],
   },
   preload: {
     plugins: [externalizeDepsPlugin()]

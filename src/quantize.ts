@@ -5,7 +5,7 @@ export function quantizeEmbeddings(
   precision: Precision,
   ranges?: number[][],
   calibrationEmbeddings?: number[][]
-): number[][] | Int8Array[] | Uint8Array[] {
+): number[][] | Float32Array[] | Int8Array[] | Uint8Array[] {
   // Convert Tensor-like objects to arrays (if needed, adjust for your environment)
   // Here we assume embeddings are already numeric arrays
 

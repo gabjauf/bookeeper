@@ -9,6 +9,7 @@ import 'dotenv/config'
 import './IPC/upload-file';
 import './IPC/documents';
 import './IPC/sync';
+import './IPC/search';
 import { THUMBNAIL_PATH } from './consts/PATH'
 import { readFile } from 'fs/promises'
 import { runMigrations } from './db'
@@ -56,6 +57,7 @@ protocol.registerSchemesAsPrivileged([
 app.whenReady().then(async () => {
   await runMigrations()
   initRclone()
+
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
 

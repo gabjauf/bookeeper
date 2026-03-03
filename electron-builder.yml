@@ -14,8 +14,6 @@ extraResources:
     to: .
     filter:
       - 'librclone.*'
-asarUnpack:
-  - resources/**
 win:
   executableName: bookshelf
 nsis:

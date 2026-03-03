@@ -8,6 +8,7 @@ import { PDFDocument } from 'mupdf'
 import { BOOK_PATH, THUMBNAIL_PATH } from '../consts/PATH'
 import crypto from 'crypto'
 import { eq } from 'drizzle-orm'
+import { indexDocument } from '../embedding/indexer'
 
 async function ensureDir(dirPath) {
   await fs.mkdir(dirPath, { recursive: true })
@@ -57,7 +58,14 @@ registerIpc(IPCAction.FILE_UPLOAD, async (_event, fileData) => {
     await fs.writeFile(path.join(THUMBNAIL_PATH, `${filename}.svg`), svg)
   }
 
-  await fs.writeFile(path.join(BOOK_PATH, `${filename}.${extension}`), file.data)
+  const filePath = path.join(BOOK_PATH, `${filename}.${extension}`)
+  await fs.writeFile(filePath, file.data)
+
+  // Fire-and-forget: index document for semantic search
+  indexDocument(data[0].id, filePath).catch((err) =>
+    console.error('Indexing failed for', data[0].id, err)
+  )
+
   return data
 })
 async function hasDuplicate(hash: string) {

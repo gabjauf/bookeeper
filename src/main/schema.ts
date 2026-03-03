@@ -1,22 +1,20 @@
-import { sqliteTable, integer, customType, int, text } from 'drizzle-orm/sqlite-core'
-import { relations, sql } from 'drizzle-orm'
+import { sqliteTable, integer, customType, int, text, blob } from 'drizzle-orm/sqlite-core'
+import { relations } from 'drizzle-orm'
 import { randomUUID } from 'node:crypto'
 
-const embedding = customType<{
-  data: number[]
-  config: { dimensions: number }
-  configRequired: true
+const binaryEmbedding = customType<{
+  data: Uint8Array
   driverData: Buffer
 }>({
-  dataType(config) {
-    return `F1BIT_BLOB(${config.dimensions})`
+  dataType() {
+    return 'BLOB'
   },
   fromDriver(value: Buffer) {
-    return Array.from(new Float32Array(value.buffer))
+    return new Uint8Array(value.buffer, value.byteOffset, value.byteLength)
   },
-  toDriver(value: number[]) {
-    return sql`vector1bit(${JSON.stringify(value)})`
-  }
+  toDriver(value: Uint8Array) {
+    return Buffer.from(value)
+  },
 })
 
 export const usersTable = sqliteTable('users_table', {
@@ -29,7 +27,7 @@ export const usersTable = sqliteTable('users_table', {
 export const vectorsTable = sqliteTable('vectors', {
   id: text("id", { length: 36 }).primaryKey().$defaultFn(() => randomUUID()),
   text: text().notNull(),
-  embedding: embedding({ dimensions: 1024 }).notNull() // stores raw binary vector
+  embedding: blob('embedding', { mode: 'buffer' }).notNull(),
 })
 
 export const documentsTable = sqliteTable('document', {
@@ -58,7 +56,9 @@ export const chunksTable = sqliteTable('chunks', {
   documentId: text('document_id')
     .notNull()
     .references(() => documentsTable.id),
-  embedding: embedding({ dimensions: 1024 }).notNull() // stores raw binary vector
+  text: text().notNull(),
+  chunkIndex: integer('chunk_index').notNull().default(0),
+  embedding: binaryEmbedding('embedding').notNull(),
 })
 
 export const chunksRelations = relations(chunksTable, ({ one }) => ({

@@ -8,9 +8,10 @@ import { BOOK_PATH } from '../consts/PATH'
 
 export async function deleteDocumentById(documentId: string) {
   const document = await findDocumentById(documentId)
-  await db.delete(documentsTable).where(eq(documentsTable.id, documentId))
+  // Delete chunks first (FK dependency), then the document record
   await db.delete(chunksTable).where(eq(chunksTable.documentId, documentId))
-  shell.trashItem(path.join(BOOK_PATH, `${documentId}.${document.extension}`))
+  await db.delete(documentsTable).where(eq(documentsTable.id, documentId))
+  await shell.trashItem(path.join(BOOK_PATH, `${documentId}.${document.extension}`))
 }
 
 export async function findDocumentById(documentId: string) {
@@ -19,5 +20,6 @@ export async function findDocumentById(documentId: string) {
     .from(documentsTable)
     .where(eq(documentsTable.id, documentId))
     .limit(1)
+  if (!documents[0]) throw new Error(`Document not found: ${documentId}`)
   return documents[0]
 }

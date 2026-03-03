@@ -3,6 +3,7 @@ export const IPCAction = {
     DOCUMENT_GETALL: 'documents:getAll',
     DOCUMENT_OPEN_ORIGINAL: 'documents:openOriginal',
     DOCUMENT_DELETE_BY_ID: 'documents:deleteById',
+    DOCUMENT_SEARCH: 'documents:search',
     // Sync actions
     SYNC_CONFIGURE: 'sync:configure',
     SYNC_START: 'sync:start',
