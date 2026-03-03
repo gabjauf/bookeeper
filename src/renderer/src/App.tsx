@@ -1,5 +1,5 @@
 import type { Component } from 'solid-js'
-import { createResource, createSignal, For, Show } from 'solid-js'
+import { createResource, createSignal, For, onCleanup, onMount, Show } from 'solid-js'
 import { toaster } from '@kobalte/core'
 import { IPCAction } from '../../shared/ipc-actions'
 import {
@@ -13,12 +13,36 @@ import {
 import { Menu } from '@ark-ui/solid/menu'
 import { Sidebar } from './components/Sidebar'
 import { SearchPage } from './components/SearchPage'
-
-const ipc = (window as any).electron.ipcRenderer
+import { ipc } from './lib/ipc'
 
 const App: Component = () => {
   const [dropAreaRef, setDropAreaRef] = createSignal<HTMLDivElement | null>(null)
   const [showSearch, setShowSearch] = createSignal(false)
+  const [indexingCount, setIndexingCount] = createSignal(0)
+  const [currentFile, setCurrentFile] = createSignal<string | undefined>(undefined)
+  const [pillVisible, setPillVisible] = createSignal(false)
+
+  onMount(() => {
+    let hideTimer: ReturnType<typeof setTimeout> | null = null
+
+    const off = ipc.on(
+      IPCAction.INDEXING_QUEUE_UPDATE,
+      (_, { count, currentFile: file }) => {
+        setIndexingCount(count)
+        setCurrentFile(file)
+        if (count > 0) {
+          if (hideTimer) { clearTimeout(hideTimer); hideTimer = null }
+          setPillVisible(true)
+        } else {
+          hideTimer = setTimeout(() => setPillVisible(false), 1500)
+        }
+      }
+    )
+    onCleanup(() => {
+      off?.()
+      if (hideTimer) clearTimeout(hideTimer)
+    })
+  })
 
   const handleDragOver = (event: DragEvent) => {
     event.preventDefault()
@@ -79,13 +103,25 @@ const App: Component = () => {
     ipc.invoke(IPCAction.DOCUMENT_OPEN_ORIGINAL, documentId)
   }
 
-  const deleteDocument = (documentId: string) => {
-    ipc.invoke(IPCAction.DOCUMENT_DELETE_BY_ID, documentId)
+  const deleteDocument = async (documentId: string) => {
+    await ipc.invoke(IPCAction.DOCUMENT_DELETE_BY_ID, documentId)
+    refetchFiles()
   }
 
   return (
     <div class="flex min-h-screen">
       <Sidebar />
+
+      <Show when={pillVisible()}>
+        <div class="fixed bottom-4 left-16 flex items-center gap-1.5 text-xs text-neutral-500 pointer-events-none">
+          <span class="w-1.5 h-1.5 rounded-full bg-neutral-500 animate-pulse" />
+          {currentFile()
+            ? indexingCount() > 1
+              ? `Indexing ${currentFile()}… (${indexingCount() - 1} more)`
+              : `Indexing ${currentFile()}…`
+            : 'Indexing…'}
+        </div>
+      </Show>
 
       <Show when={showSearch()}>
         <SearchPage onBack={() => setShowSearch(false)} />

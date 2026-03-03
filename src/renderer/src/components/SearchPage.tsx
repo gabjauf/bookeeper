@@ -1,19 +1,11 @@
 import { createSignal, For, Show } from 'solid-js'
 import { IPCAction } from '../../../shared/ipc-actions'
-
-interface SearchResult {
-  documentId: string
-  title: string
-  extension: string
-  snippet: string
-  score: number
-}
+import type { SearchResult } from '../../../shared/ipc-types'
+import { ipc } from '../lib/ipc'
 
 interface SearchPageProps {
   onBack: () => void
 }
-
-const ipc = (window as any).electron.ipcRenderer
 
 export function SearchPage(props: SearchPageProps) {
   const [query, setQuery] = createSignal('')
@@ -32,7 +24,7 @@ export function SearchPage(props: SearchPageProps) {
     setLoading(true)
     setSearched(true)
     try {
-      const data: SearchResult[] = await ipc.invoke(IPCAction.DOCUMENT_SEARCH, { query: q })
+      const data = await ipc.invoke(IPCAction.DOCUMENT_SEARCH, { query: q })
       setResults(data)
     } catch (err) {
       console.error('Search failed', err)

@@ -17,6 +17,7 @@ export async function extractText(filePath: string): Promise<string> {
   const pages: string[] = []
 
   for (let i = 0; i < pageCount; i++) {
+    await new Promise<void>((r) => setImmediate(r))
     const page = doc.loadPage(i)
     const structuredText = page.toStructuredText('preserve-whitespace')
     const text = structuredText.asText()

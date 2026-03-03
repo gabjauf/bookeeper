@@ -18,6 +18,8 @@ export const IPCAction = {
     SYNC_GET_ENABLED_REMOTES: 'sync:getEnabledRemotes',
     SYNC_CHECK_AUTH: 'sync:checkAuth',
     SYNC_REAUTH_REMOTE: 'sync:reauthRemote',
+    // Indexing queue (main → renderer)
+    INDEXING_QUEUE_UPDATE: 'indexing:queueUpdate',
 } as const;
 
 export type IPCAction = keyof typeof IPCAction;

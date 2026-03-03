@@ -8,7 +8,7 @@ import { PDFDocument } from 'mupdf'
 import { BOOK_PATH, THUMBNAIL_PATH } from '../consts/PATH'
 import crypto from 'crypto'
 import { eq } from 'drizzle-orm'
-import { indexDocument } from '../embedding/indexer'
+import { enqueueIndex } from '../embedding/indexer'
 
 async function ensureDir(dirPath) {
   await fs.mkdir(dirPath, { recursive: true })
@@ -34,24 +34,27 @@ export async function drawPageAsSVG(document: PDFDocument, pageNumber: number): 
 registerIpc(IPCAction.FILE_UPLOAD, async (_event, fileData) => {
   await ensureDir(BOOK_PATH)
   await ensureDir(THUMBNAIL_PATH)
-  const file = fileData[0]
-  const extension = file.name.split('.').pop()
-  const hash = crypto.createHash('sha256').update(file.data).digest('hex')
-  if (await hasDuplicate(hash)) {
-    throw new Error('File already exists')
+  const results: Record<string, unknown>[] = []
+  for (const file of fileData) {
+    const doc = await uploadOne(file)
+    if (doc) results.push(doc)
   }
+  return results
+})
+
+async function uploadOne(file: { name: string; data: Uint8Array }) {
+  const extension = file.name.split('.').pop() ?? ''
+  const hash = crypto.createHash('sha256').update(file.data).digest('hex')
+  if (await hasDuplicate(hash)) return null
+
   const now = new Date().toISOString()
-  const data = await db
+  const [doc] = await db
     .insert(documentsTable)
-    .values({
-      title: file.name,
-      extension,
-      sha: hash,
-      createdAt: now,
-      updatedAt: now,
-    })
+    .values({ title: file.name, extension, sha: hash, createdAt: now, updatedAt: now })
     .returning()
-  const filename = `${data[0].id}`
+
+  const filename = `${doc.id}`
+
   if (file.name.endsWith('.pdf')) {
     const pdf = await loadPDF(file.data)
     const svg = await drawPageAsSVG(pdf, 0)
@@ -61,15 +64,12 @@ registerIpc(IPCAction.FILE_UPLOAD, async (_event, fileData) => {
   const filePath = path.join(BOOK_PATH, `${filename}.${extension}`)
   await fs.writeFile(filePath, file.data)
 
-  // Fire-and-forget: index document for semantic search
-  indexDocument(data[0].id, filePath).catch((err) =>
-    console.error('Indexing failed for', data[0].id, err)
-  )
+  enqueueIndex(doc.id, filePath, doc.title)
 
-  return data
-})
+  return doc
+}
+
 async function hasDuplicate(hash: string) {
   const duplicates = await db.select().from(documentsTable).where(eq(documentsTable.sha, hash))
   return duplicates.length > 0
 }
-

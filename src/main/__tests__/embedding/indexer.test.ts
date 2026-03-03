@@ -9,6 +9,9 @@ vi.mock('electron', () => ({
     getPath: vi.fn(() => tmpdir()),
     isPackaged: false,
   },
+  BrowserWindow: {
+    getAllWindows: vi.fn(() => []),
+  },
 }))
 
 vi.mock('../../embedding/text-extractor', () => ({
