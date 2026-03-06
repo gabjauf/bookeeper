@@ -38,7 +38,7 @@ describe('search', () => {
 
   describe('given an empty query', () => {
     it('when searching, then returns empty array', async () => {
-      const { db, runMigrations } = await import('../db')
+      const { runMigrations } = await import('../db')
       await runMigrations()
       const { search } = await import('../IPC/search')
 
@@ -93,7 +93,7 @@ describe('search', () => {
       expect(results[0].score).toBeLessThan(results[1].score)
     })
 
-    it('when searching, then returns at most one result per document', async () => {
+    it('when searching, then returns multiple passages from the same document', async () => {
       const { embed } = await import('../embedding/embedding-service')
       const { db, runMigrations } = await import('../db')
       const { chunksTable, documentsTable } = await import('../schema')
@@ -107,7 +107,6 @@ describe('search', () => {
         .returning()
 
       const vec = makeVec(1024, 1.0)
-      // Two chunks for the same document
       await db.insert(chunksTable).values([
         { documentId: doc.id, text: 'chunk one', chunkIndex: 0, embedding: sql`vector1bit(${JSON.stringify(vec)})` as unknown as number[] },
         { documentId: doc.id, text: 'chunk two', chunkIndex: 1, embedding: sql`vector1bit(${JSON.stringify(makeVec(1024, 2.0))})` as unknown as number[] },
@@ -117,8 +116,8 @@ describe('search', () => {
 
       const results = await search('anything', 10)
 
-      expect(results).toHaveLength(1)
-      expect(results[0].documentId).toBe(doc.id)
+      expect(results).toHaveLength(2)
+      results.forEach((r) => expect(r.documentId).toBe(doc.id))
     })
   })
 })

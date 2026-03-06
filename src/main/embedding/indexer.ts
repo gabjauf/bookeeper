@@ -61,6 +61,7 @@ export async function indexDocument(documentId: string, filePath: string): Promi
       documentId,
       text: chunk.text,
       chunkIndex: chunk.index,
+      page: chunk.page,
       embedding: sql`vector1bit(${JSON.stringify(embeddings[i])})` as unknown as number[],
     }))
   )

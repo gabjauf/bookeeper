@@ -12,6 +12,7 @@ export interface SearchResult {
   title: string
   extension: string
   snippet: string
+  page: number
   score: number
 }
 
@@ -22,36 +23,20 @@ export async function search(query: string, limit = DEFAULT_LIMIT): Promise<Sear
   const queryJson = JSON.stringify(queryEmbedding)
   const distance = sql<number>`vector_distance_cos(${chunksTable.embedding}, vector1bit(${queryJson}))`
 
-  const rows = await db
+  return db
     .select({
       documentId: chunksTable.documentId,
       snippet: chunksTable.text,
+      page: chunksTable.page,
       title: documentsTable.title,
       extension: documentsTable.extension,
-      distance,
+      score: distance,
     })
     .from(chunksTable)
     .innerJoin(documentsTable, eq(chunksTable.documentId, documentsTable.id))
     .orderBy(distance)
-    .limit(limit * 5)
+    .limit(limit)
     .all()
-
-  const seen = new Set<string>()
-  const results: SearchResult[] = []
-  for (const row of rows) {
-    if (seen.has(row.documentId)) continue
-    seen.add(row.documentId)
-    results.push({
-      documentId: row.documentId,
-      title: row.title,
-      extension: row.extension,
-      snippet: row.snippet,
-      score: row.distance,
-    })
-    if (results.length >= limit) break
-  }
-
-  return results
 }
 
 registerIpc(

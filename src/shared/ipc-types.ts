@@ -19,6 +19,7 @@ export interface SearchResult {
   title: string
   extension: string
   snippet: string
+  page: number
   score: number
 }
 

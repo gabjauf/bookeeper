@@ -8,7 +8,6 @@ CREATE TABLE `__new_chunks` (
 	FOREIGN KEY (`document_id`) REFERENCES `document`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
-INSERT INTO `__new_chunks`("id", "document_id", "text", "chunk_index", "embedding") SELECT "id", "document_id", "text", "chunk_index", "embedding" FROM `chunks`;--> statement-breakpoint
 DROP TABLE `chunks`;--> statement-breakpoint
 ALTER TABLE `__new_chunks` RENAME TO `chunks`;--> statement-breakpoint
 PRAGMA foreign_keys=ON;--> statement-breakpoint

@@ -42,7 +42,7 @@ describe('indexDocument', () => {
       const { embed } = await import('../../embedding/embedding-service')
 
       // 3 chunks worth of text (~6000 chars)
-      const fakeText = 'The quick brown fox. '.repeat(300)
+      const fakeText = [{ text: 'The quick brown fox. '.repeat(300), page: 1 }]
       vi.mocked(extractText).mockResolvedValue(fakeText)
 
       // Return a 128-byte binary embedding per chunk call
@@ -83,7 +83,7 @@ describe('indexDocument', () => {
       const { extractText } = await import('../../embedding/text-extractor')
       const { embed } = await import('../../embedding/embedding-service')
 
-      vi.mocked(extractText).mockResolvedValue('')
+      vi.mocked(extractText).mockResolvedValue([])
       vi.mocked(embed).mockResolvedValue([])
 
       const { db, runMigrations } = await import('../../db')
@@ -109,7 +109,7 @@ describe('indexDocument', () => {
       const { extractText } = await import('../../embedding/text-extractor')
       const { embed } = await import('../../embedding/embedding-service')
 
-      vi.mocked(extractText).mockResolvedValue('Short text for testing.')
+      vi.mocked(extractText).mockResolvedValue([{ text: 'Short text for testing.', page: 1 }])
       vi.mocked(embed).mockImplementation(async (texts) =>
         texts.map(() => Array(1024).fill(0.1) as number[])
       )

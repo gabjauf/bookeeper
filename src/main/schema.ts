@@ -53,6 +53,7 @@ export const chunksTable = sqliteTable('chunks', {
     .references(() => documentsTable.id),
   text: text().notNull(),
   chunkIndex: integer('chunk_index').notNull().default(0),
+  page: integer('page').notNull().default(1),
   embedding: embedding({ dimensions: 1024 }).notNull(),
 })
 
