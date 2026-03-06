@@ -1,5 +1,5 @@
 import { BrowserWindow } from 'electron'
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import { db } from '../db'
 import { chunksTable } from '../schema'
 import { IPCAction } from '../../shared/ipc-actions'
@@ -61,7 +61,7 @@ export async function indexDocument(documentId: string, filePath: string): Promi
       documentId,
       text: chunk.text,
       chunkIndex: chunk.index,
-      embedding: embeddings[i],
+      embedding: sql`vector1bit(${JSON.stringify(embeddings[i])})` as unknown as number[],
     }))
   )
 }

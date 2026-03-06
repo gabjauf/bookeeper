@@ -1,16 +1,10 @@
-import { quantizeEmbeddings } from '../../quantize'
+import { Ollama } from 'ollama'
 
-const OLLAMA_URL = 'http://localhost:11434'
 const EMBEDDING_MODEL = 'qwen3-embedding:0.6b'
+const ollama = new Ollama()
 
-export async function embed(texts: string[]): Promise<Uint8Array[]> {
+export async function embed(texts: string[]): Promise<number[][]> {
   if (texts.length === 0) return []
-  const res = await fetch(`${OLLAMA_URL}/api/embed`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: EMBEDDING_MODEL, input: texts }),
-  })
-  if (!res.ok) throw new Error(`Ollama embed failed: ${res.statusText}`)
-  const { embeddings } = (await res.json()) as { embeddings: number[][] }
-  return quantizeEmbeddings(embeddings, 'ubinary') as Uint8Array[]
+  const { embeddings } = await ollama.embed({ model: EMBEDDING_MODEL, input: texts })
+  return embeddings
 }

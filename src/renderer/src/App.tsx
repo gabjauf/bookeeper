@@ -170,13 +170,18 @@ const App: Component = () => {
                       </div>
                     </Menu.ContextTrigger>
                     <Menu.Positioner>
-                      <Menu.Content class="bg-neutral-800 border border-neutral-700 rounded shadow-lg p-1">
-                        <Menu.Item value="open" class="px-3 py-1 hover:bg-neutral-700 rounded cursor-pointer text-sm">
+                      <Menu.Content class="bg-neutral-800 border border-neutral-700 rounded shadow-lg p-1 min-w-[120px]">
+                        <Menu.Item
+                          value="open"
+                          class="px-3 py-1.5 hover:bg-neutral-700 rounded cursor-pointer text-sm text-neutral-100"
+                          onClick={() => openOriginal(item.id)}
+                        >
                           Open
                         </Menu.Item>
+                        <div class="my-1 border-t border-neutral-700" />
                         <Menu.Item
                           value="delete"
-                          class="px-3 py-1 hover:bg-red-900 rounded cursor-pointer text-sm text-red-400"
+                          class="px-3 py-1.5 hover:bg-red-900/50 rounded cursor-pointer text-sm text-red-400"
                           onClick={() => deleteDocument(item.id)}
                         >
                           Delete

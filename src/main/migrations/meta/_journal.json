@@ -36,6 +36,13 @@
       "when": 1772419700000,
       "tag": "0004_chunks_add_text_and_index",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1772510308165,
+      "tag": "0005_youthful_felicia_hardy",
+      "breakpoints": true
     }
   ]
 }

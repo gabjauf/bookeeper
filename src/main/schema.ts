@@ -2,18 +2,13 @@ import { sqliteTable, integer, customType, int, text, blob } from 'drizzle-orm/s
 import { relations } from 'drizzle-orm'
 import { randomUUID } from 'node:crypto'
 
-const binaryEmbedding = customType<{
-  data: Uint8Array
-  driverData: Buffer
+const embedding = customType<{
+  data: number[];
+  config: { dimensions: number };
+  driverData: Buffer;
 }>({
-  dataType() {
-    return 'BLOB'
-  },
-  fromDriver(value: Buffer) {
-    return new Uint8Array(value.buffer, value.byteOffset, value.byteLength)
-  },
-  toDriver(value: Uint8Array) {
-    return Buffer.from(value)
+  dataType(config) {
+    return `BIT_BLOB(${config!.dimensions})`
   },
 })
 
@@ -58,7 +53,7 @@ export const chunksTable = sqliteTable('chunks', {
     .references(() => documentsTable.id),
   text: text().notNull(),
   chunkIndex: integer('chunk_index').notNull().default(0),
-  embedding: binaryEmbedding('embedding').notNull(),
+  embedding: embedding({ dimensions: 1024 }).notNull(),
 })
 
 export const chunksRelations = relations(chunksTable, ({ one }) => ({

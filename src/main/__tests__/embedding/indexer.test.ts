@@ -47,7 +47,7 @@ describe('indexDocument', () => {
 
       // Return a 128-byte binary embedding per chunk call
       vi.mocked(embed).mockImplementation(async (texts) =>
-        texts.map(() => new Uint8Array(128))
+        texts.map(() => Array(1024).fill(0.1) as number[])
       )
 
       const { db, runMigrations } = await import('../../db')
@@ -111,7 +111,7 @@ describe('indexDocument', () => {
 
       vi.mocked(extractText).mockResolvedValue('Short text for testing.')
       vi.mocked(embed).mockImplementation(async (texts) =>
-        texts.map(() => new Uint8Array(128))
+        texts.map(() => Array(1024).fill(0.1) as number[])
       )
 
       const { db, runMigrations } = await import('../../db')
