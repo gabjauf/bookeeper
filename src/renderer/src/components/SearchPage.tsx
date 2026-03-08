@@ -1,4 +1,5 @@
 import { createSignal, For, Show } from 'solid-js'
+import { Tooltip } from '@kobalte/core/tooltip'
 import { IPCAction } from '../../../shared/ipc-actions'
 import type { SearchResult } from '../../../shared/ipc-types'
 import { ipc } from '../lib/ipc'
@@ -114,9 +115,16 @@ export function SearchPage(props: SearchPageProps) {
                     <span class="text-sm text-white font-medium truncate">{result.title}</span>
                     <span class="text-neutral-400 text-xs flex-shrink-0">p. {result.page}</span>
                   </div>
-                  <p class="text-sm text-neutral-300 leading-relaxed line-clamp-2">
-                    {highlightText(result.snippet, query())}
-                  </p>
+                  <Tooltip openDelay={400} closeDelay={100}>
+                    <Tooltip.Trigger as="p" class="text-sm text-neutral-300 leading-relaxed line-clamp-2 cursor-default text-left w-full">
+                      {highlightText(result.snippet, query())}
+                    </Tooltip.Trigger>
+                    <Tooltip.Portal>
+                      <Tooltip.Content class="z-50 w-72 max-h-52 overflow-y-auto bg-neutral-100 border border-neutral-300 rounded-lg p-3 shadow-xl text-sm text-neutral-800 leading-relaxed animate-in fade-in-0 zoom-in-95 [&_mark]:bg-yellow-300/60 [&_mark]:text-yellow-900">
+                        {highlightText(result.snippet, query())}
+                      </Tooltip.Content>
+                    </Tooltip.Portal>
+                  </Tooltip>
                 </div>
               </div>
             )}
