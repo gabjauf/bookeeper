@@ -39,6 +39,19 @@ export function SearchPage(props: SearchPageProps) {
   const openDocument = (documentId: string, page?: number) =>
     ipc.invoke(IPCAction.DOCUMENT_OPEN_ORIGINAL, documentId, page)
 
+  const highlightText = (text: string, q: string) => {
+    const terms = q.trim().split(/\s+/).filter((t) => t.length >= 2)
+    if (!terms.length) return [<span>{text}</span>]
+    const escaped = terms.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    const regex = new RegExp(`(${escaped.join('|')})`, 'gi')
+    const parts = text.split(regex)
+    return parts.map((part, i) =>
+      i % 2 === 1
+        ? <mark class="bg-yellow-400/25 text-yellow-200 rounded-sm not-italic">{part}</mark>
+        : <span>{part}</span>
+    )
+  }
+
   const accentClass = (score: number) => {
     const scores = results().map((r) => r.score)
     const min = Math.min(...scores)
@@ -97,11 +110,13 @@ export function SearchPage(props: SearchPageProps) {
 
                 {/* Content */}
                 <div class="flex flex-col gap-1 min-w-0">
-                  <p class="text-sm text-white font-medium truncate">
-                    {result.title}
-                    <span class="text-neutral-400 font-normal"> · p. {result.page}</span>
+                  <div class="flex items-baseline gap-2 min-w-0">
+                    <span class="text-sm text-white font-medium truncate">{result.title}</span>
+                    <span class="text-neutral-400 text-xs flex-shrink-0">p. {result.page}</span>
+                  </div>
+                  <p class="text-sm text-neutral-300 leading-relaxed line-clamp-2">
+                    {highlightText(result.snippet, query())}
                   </p>
-                  <p class="text-sm text-neutral-300 leading-relaxed line-clamp-2">{result.snippet}</p>
                 </div>
               </div>
             )}
