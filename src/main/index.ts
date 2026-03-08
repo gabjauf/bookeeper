@@ -1,5 +1,5 @@
 import './env-setup'
-import { app, shell, BrowserWindow, protocol } from 'electron'
+import { app, shell, BrowserWindow, protocol, dialog } from 'electron'
 import path, { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -55,7 +55,17 @@ protocol.registerSchemesAsPrivileged([
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(async () => {
-  await runMigrations()
+  try {
+    await runMigrations()
+  } catch (err) {
+    console.error('[db] Migration failed:', err)
+    dialog.showErrorBox(
+      'Database migration failed',
+      `The app could not update its database and must quit.\n\n${(err as Error).message}`
+    )
+    app.quit()
+    return
+  }
   initRclone()
 
   // Set app user model id for windows

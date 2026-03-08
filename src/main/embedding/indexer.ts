@@ -65,4 +65,9 @@ export async function indexDocument(documentId: string, filePath: string): Promi
       embedding: sql`vector1bit(${JSON.stringify(embeddings[i])})` as unknown as number[],
     }))
   )
+
+  await db.run(sql`
+    INSERT INTO chunks_fts(rowid, text)
+    SELECT rowid, text FROM chunks WHERE document_id = ${documentId}
+  `)
 }
