@@ -53,7 +53,7 @@ export interface AuthCheckResult {
 export interface IpcInvokeMap {
   [IPCAction.FILE_UPLOAD]:             { args: [Array<{ name: string; data: Uint8Array }>]; result: Document[] }
   [IPCAction.DOCUMENT_GETALL]:         { args: [];                                           result: Document[] }
-  [IPCAction.DOCUMENT_OPEN_ORIGINAL]:  { args: [documentId: string];                        result: void }
+  [IPCAction.DOCUMENT_OPEN_ORIGINAL]:  { args: [documentId: string, page?: number];          result: void }
   [IPCAction.DOCUMENT_DELETE_BY_ID]:   { args: [documentId: string];                        result: void }
   [IPCAction.DOCUMENT_SEARCH]:         { args: [{ query: string; limit?: number }];          result: SearchResult[] }
   [IPCAction.SYNC_START]:              { args: [];                                           result: SyncResult }
